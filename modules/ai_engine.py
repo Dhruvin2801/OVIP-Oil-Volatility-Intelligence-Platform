@@ -19,10 +19,10 @@ def setup_rag_vector_db(df):
 def get_ai_response(user_query, vectorizer, tfidf_matrix, df):
     """Securely communicates with Google Gemini, injecting chat history and live data."""
     try:
-        # 1. Initialize Gemini API
+        # 1. Initialize Gemini API securely from Streamlit Secrets
         genai.configure(api_key=st.secrets['GEMINI_API_KEY'])
         
-        # 2. FIX PROBLEM 1: Force the absolute latest date into the prompt!
+        # 2. Force the absolute latest date into the prompt!
         df_sorted = df.sort_values('Date')
         latest = df_sorted.iloc[-1]
         latest_context = f"CURRENT LIVE DATA (Absolute Latest Date in Database: {latest['Date'].strftime('%Y-%m-%d')}): WTI=${latest['WTI']:.2f}, Volatility={latest['Volatility']:.3f}, Crisis Prob={latest['Crisis_Prob']:.2f}."
@@ -35,20 +35,21 @@ def get_ai_response(user_query, vectorizer, tfidf_matrix, df):
         
         full_context = f"{latest_context}\n\nHISTORICAL DB MATCHES:\n{hist_context}"
 
-        # 4. FIX PROBLEM 2: Extract Chat Memory! (Grab the last 5 messages)
+        # 4. Extract Chat Memory! (Grab the last 5 messages for follow-up questions)
         history_text = ""
         if 'chat' in st.session_state:
             for msg in st.session_state.chat[-6:-1]: 
                 sender = "USER" if msg['role'] == 'user' else "OVIP_DAEMON"
                 history_text += f"{sender}: {msg['content']}\n"
 
-        # 5. Build the Gemini Brain (Using the fast & smart 1.5 Flash model)
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction="You are OVIP_DAEMON, an advanced cybersecurity and oil volatility AI terminal. Keep responses short, hacker-like, professional, and base them strictly on the provided data. You have access to the recent chat history to answer follow-up questions like 'why?'"
-        )
+        # 5. Build the Gemini Brain (Using the hyper-stable gemini-pro model)
+        model = genai.GenerativeModel('gemini-pro')
         
         prompt = f"""
+        You are OVIP_DAEMON, an advanced cybersecurity and oil volatility AI terminal. 
+        Keep responses short, hacker-like, professional, and base them strictly on the provided data. 
+        You have access to the recent chat history to answer follow-up questions like 'why?'
+        
         [SYSTEM INJECTION: CONTEXT DATA]
         {full_context}
         
