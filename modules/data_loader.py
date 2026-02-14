@@ -10,25 +10,20 @@ class DataLoader:
     @st.cache_data(ttl=3600)
     def merge_all_data(_self):
         try:
-            # 1. Load Data
+            # 1. Load the Single Master Dataset
+            # (Make sure to rename your downloaded file to 'merged_final.csv' before putting it in the data folder)
             df_main = pd.read_csv(_self.data_dir / 'merged_final.csv')
-            df_regime = pd.read_csv(_self.data_dir / 'HONEST_REGIME_PROBS.csv')
             df_perf = pd.read_csv(_self.data_dir / 'data_model_performance_2025.csv')
             
             df_main['Date'] = pd.to_datetime(df_main['Date'])
-            df_regime['Date'] = pd.to_datetime(df_regime['Date'])
             df_perf['Date'] = pd.to_datetime(df_perf['Date'])
             
-            # 2. FIX THE PROBABILITY BUG: Drop bad prob, keep honest prob
-            if 'Crisis_Prob' in df_main.columns:
-                df_main = df_main.drop(columns=['Crisis_Prob'])
-            df_combined = pd.merge(df_main, df_regime, on='Date', how='left')
-            
-            # 3. Merge Performance
+            # 2. Merge Performance Data for the Dashboard Charts
             cols_to_use = ['Date', 'Predicted_Vol', 'Error', 'Uncertainty_Factor']
-            df_combined = pd.merge(df_combined, df_perf[cols_to_use], on='Date', how='left')
+            df_combined = pd.merge(df_main, df_perf[cols_to_use], on='Date', how='left')
             
             return df_combined.sort_values('Date').reset_index(drop=True)
+            
         except Exception as e:
             st.error(f"Data Loader Error: {e}")
             return pd.DataFrame()
@@ -40,6 +35,7 @@ class DataLoader:
         latest = df.iloc[-1]
         previous = df.iloc[-2]
         
+        # Determine Regime State dynamically
         regime_str = "CRISIS" if latest['Crisis_Prob'] > 0.5 else "MODERATE" if latest['Crisis_Prob'] > 0.1 else "CALM"
         
         return {
