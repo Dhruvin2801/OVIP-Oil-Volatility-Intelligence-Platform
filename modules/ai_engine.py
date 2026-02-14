@@ -15,26 +15,37 @@ def setup_rag_vector_db(df):
     return vectorizer, tfidf_matrix, df
 
 def get_ai_response(user_query, vectorizer, tfidf_matrix, df):
-    """Switches brain to Groq Llama-3 for instant, unlimited responses."""
+    """Securely communicates with Groq using the latest Llama 3.3 model."""
     try:
+        # Initialize Groq client with your secret key
         client = Groq(api_key=st.secrets['GROQ_API_KEY'])
         
-        # 1. Grab absolute latest data
-        latest = df.sort_values('Date').iloc[-1]
+        # 1. Grab absolute latest data from the CSV
+        df_sorted = df.sort_values('Date')
+        latest = df_sorted.iloc[-1]
         latest_context = f"CURRENT_STATE: {latest['Date'].strftime('%Y-%m-%d')} | WTI: ${latest['WTI']:.2f} | Vol: {latest['Volatility']:.3f} | CP: {latest['Crisis_Prob']:.2f}"
         
-        # 2. Get history memory
+        # 2. Extract Chat Memory for follow-up questions
         history_text = ""
         if 'chat' in st.session_state:
             for msg in st.session_state.chat[-5:]:
-                history_text += f"{msg['role']}: {msg['content']}\n"
+                role = "USER" if msg['role'] == 'user' else "OVIP_DAEMON"
+                history_text += f"{role}: {msg['content']}\n"
 
-        # 3. Call Groq (Using Llama-3-70b for high intelligence)
+        # 3. Call Groq using the NEW llama-3.3-70b model
         response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are OVIP, an elite oil market analyst. Use professional headers: [EXECUTIVE SUMMARY], [MARKET IMPLICATIONS], [STRATEGY]. Explain technical terms like 'NPRS-1' simply if asked."},
-                {"role": "user", "content": f"DATA: {latest_context}\n\nHISTORY:\n{history_text}\n\nCOMMAND: {user_query}"}
+                {
+                    "role": "system", 
+                    "content": (
+                        "You are OVIP, an elite oil market analyst and risk intelligence daemon. "
+                        "Tone: Professional, analytical, and hacker-like. "
+                        "Use headers: [EXECUTIVE SUMMARY], [MARKET IMPLICATIONS], [STRATEGY]. "
+                        "Explain terms like 'NPRS-1' (69% accuracy directional model) if asked."
+                    )
+                },
+                {"role": "user", "content": f"DATA_CONTEXT: {latest_context}\n\nCHAT_HISTORY:\n{history_text}\n\nUSER_COMMAND: {user_query}"}
             ],
             temperature=0.2,
             max_tokens=500
