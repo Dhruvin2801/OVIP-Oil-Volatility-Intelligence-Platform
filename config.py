@@ -1,20 +1,88 @@
 import streamlit as st
 
-COLORS = {
-    'background': '#0A192F', 'surface': '#112240',
-    'accent_primary': '#64FFDA', 'accent_secondary': '#00FF41',
-    'text_primary': '#E6F1FF', 'text_secondary': '#8892B0',
-    'border': '#1E3A5F', 'danger': '#FF073A', 'warning': '#FFAA00'
-}
-
 def apply_custom_theme():
-    st.markdown(f"""
+    st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Rajdhani:wght@500;700&family=Roboto+Mono:wght@400;700&display=swap');
-        .stApp {{ background-color: {COLORS['background']}; color: {COLORS['text_primary']}; font-family: 'Inter', sans-serif; }}
-        h1, h2, h3, h4 {{ color: {COLORS['accent_primary']} !important; font-family: 'Rajdhani', sans-serif !important; letter-spacing: 1px; text-shadow: 0 0 10px rgba(100, 255, 218, 0.2); }}
-        code, .stMetric, .stSelectbox {{ font-family: 'Roboto Mono', monospace !important; }}
-        div[data-testid="stMetric"] {{ background-color: {COLORS['surface']}; border: 1px solid {COLORS['border']}; border-radius: 5px; padding: 15px; border-left: 3px solid {COLORS['accent_primary']}; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
-        div[data-testid="stMetricValue"] {{ color: {COLORS['accent_primary']} !important; }}
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        /* Deep Black Background & Terminal Font */
+        .stApp {
+            background-color: #020202;
+            color: #00FF41;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* CRT Scanline Overlay */
+        .stApp::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* Hacker Glow Effects */
+        h1, h2, h3, h4, p, span {
+            font-family: 'Share Tech Mono', monospace !important;
+            color: #00FF41 !important;
+            text-shadow: 0px 0px 8px rgba(0, 255, 65, 0.6);
+            letter-spacing: 1.5px;
+        }
+
+        /* Terminal Style Metric Boxes */
+        div[data-testid="stMetric"] {
+            background-color: #050505;
+            border: 1px solid #00FF41;
+            border-left: 5px solid #00FF41;
+            padding: 15px;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+            position: relative;
+        }
+        
+        div[data-testid="stMetric"]::before {
+            content: "[SYS.METRIC]";
+            font-size: 10px;
+            color: #008F11;
+            position: absolute;
+            top: 2px;
+            right: 5px;
+        }
+
+        /* Input Boxes & Buttons */
+        .stSelectbox div[data-baseweb="select"] {
+            background-color: #000 !important;
+            border: 1px solid #00FF41 !important;
+            color: #00FF41 !important;
+        }
+        
+        .stButton>button {
+            background-color: #020202;
+            color: #00FF41;
+            border: 1px solid #00FF41;
+            border-radius: 0px;
+            font-family: 'Share Tech Mono', monospace;
+            text-shadow: 0 0 5px #00FF41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .stButton>button:hover {
+            background-color: #00FF41;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.8);
+        }
+
+        /* Chat Terminal */
+        .stChatInputContainer {
+            border: 1px solid #00FF41 !important;
+            background-color: #000 !important;
+        }
     </style>
     """, unsafe_allow_html=True)
