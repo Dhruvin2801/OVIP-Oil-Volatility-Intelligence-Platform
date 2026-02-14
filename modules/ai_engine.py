@@ -51,7 +51,7 @@ def get_ai_response(user_query, vectorizer, tfidf_matrix, df):
         # Target the smartest, fastest flash model available on your key, fallback to whatever is first
         target_model = valid_models[0] 
         for m in valid_models:
-            if "2.5-flash" in m:
+            if "2.0-flash" in m:
                 target_model = m
                 break
             elif "1.5-flash" in m:
@@ -59,7 +59,7 @@ def get_ai_response(user_query, vectorizer, tfidf_matrix, df):
 
         model = genai.GenerativeModel(target_model)
         
-        # 6. Build the Executive Analyst Persona Prompt
+        # 6. Build the Persona Prompt
         prompt = f"""
         [SYSTEM: INSTRUCTION OVERRIDE]
         You are OVIP, an advanced quantitative intelligence AI designed for oil market operations and risk management.
@@ -79,3 +79,10 @@ def get_ai_response(user_query, vectorizer, tfidf_matrix, df):
         
         USER_COMMAND: {user_query}
         """
+        
+        # 7. Generate Response
+        response = model.generate_content(prompt)
+        return response.text.strip()
+        
+    except Exception as e:
+        return f"⚠️ KERNEL_PANIC (Gemini API Fault): {str(e)}"
