@@ -1,5 +1,19 @@
 import streamlit as st
 
+# 🟢 THE MISSING DICTIONARY: 
+# Restored for the other pages, but updated with the Hacker Theme hex codes!
+COLORS = {
+    'background': '#020202',      # Deep Black
+    'surface': '#050505',         # Terminal Black
+    'accent_primary': '#00FF41',  # Matrix Green
+    'accent_secondary': '#008F11',# Darker Green
+    'text_primary': '#00FF41',    # Matrix Green
+    'text_secondary': '#008F11',  # Darker Green
+    'border': '#00FF41',          # Matrix Green
+    'danger': '#FF003C',          # Blood Red
+    'warning': '#FFD300'          # Cyber Yellow
+}
+
 def apply_custom_theme():
     st.markdown("""
     <style>
