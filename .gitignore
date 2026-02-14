@@ -1,0 +1,21 @@
+# 🛑 SECURITY: Never upload API keys to GitHub!
+.streamlit/secrets.toml
+.env
+
+# 🐍 Python Cache & Junk
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 💻 OS Generated Files
+.DS_Store
+Thumbs.db
+
+# 📦 Virtual Environments
+venv/
+env/
+.venv/
+
+# 📓 Jupyter Notebook Checkpoints (If you used them for testing)
+.ipynb_checkpoints/
