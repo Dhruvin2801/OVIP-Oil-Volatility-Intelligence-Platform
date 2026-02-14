@@ -1,10 +1,7 @@
 import streamlit as st
-import requests
+import google.generativeai as genai
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
-# 🚀 UPGRADED: The Universal Chat Completions Router
-API_URL = "https://router.huggingface.co/v1/chat/completions"
 
 @st.cache_resource
 def setup_rag_vector_db(df):
@@ -20,44 +17,50 @@ def setup_rag_vector_db(df):
     return vectorizer, tfidf_matrix, df
 
 def get_ai_response(user_query, vectorizer, tfidf_matrix, df):
-    """Finds relevant data and securely communicates with the AI"""
-    # 1. Retrieve the 3 most relevant months of data
-    query_vec = vectorizer.transform([user_query])
-    similarity = cosine_similarity(query_vec, tfidf_matrix).flatten()
-    top_indices = similarity.argsort()[-3:][::-1]
-    context_text = "\n".join([df.iloc[i]['rag_context'] for i in top_indices])
-    
-    # 2. Secure Headers
-    headers = {
-        "Authorization": f"Bearer {st.secrets['HF_TOKEN']}",
-        "Content-Type": "application/json"
-    }
-    
-    # 3. Modern Payload Format (Using a highly-available, fast model)
-    payload = {
-        "model": "meta-llama/Llama-3.2-3B-Instruct", 
-        "messages": [
-            {"role": "system", "content": "You are OVIP_DAEMON, an advanced cybersecurity and oil volatility AI terminal. Keep responses short, hacker-like, professional, and base them strictly on the provided data."},
-            {"role": "user", "content": f"CONTEXT_DATA:\n{context_text}\n\nUSER_COMMAND: {user_query}"}
-        ],
-        "max_tokens": 150,
-        "temperature": 0.2
-    }
-    
+    """Securely communicates with Google Gemini, injecting chat history and live data."""
     try:
-        response = requests.post(API_URL, headers=headers, json=payload)
+        # 1. Initialize Gemini API
+        genai.configure(api_key=st.secrets['GEMINI_API_KEY'])
         
-        # 🛡️ FATAL ERROR TRAP: Catch HTML Error Pages before they crash Python!
-        if not response.ok:
-            return f"⚠️ SYSTEM_ERROR_CODE [{response.status_code}]: Connection refused by provider. Msg: {response.text[:150]}"
-            
-        data = response.json()
+        # 2. FIX PROBLEM 1: Force the absolute latest date into the prompt!
+        df_sorted = df.sort_values('Date')
+        latest = df_sorted.iloc[-1]
+        latest_context = f"CURRENT LIVE DATA (Absolute Latest Date in Database: {latest['Date'].strftime('%Y-%m-%d')}): WTI=${latest['WTI']:.2f}, Volatility={latest['Volatility']:.3f}, Crisis Prob={latest['Crisis_Prob']:.2f}."
         
-        # Parse the OpenAI-style response format
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"].strip()
-        else:
-            return f"⚠️ UNEXPECTED_PAYLOAD: {str(data)[:150]}"
-            
+        # 3. Retrieve Historical Context (Just in case they ask about the past)
+        query_vec = vectorizer.transform([user_query])
+        similarity = cosine_similarity(query_vec, tfidf_matrix).flatten()
+        top_indices = similarity.argsort()[-3:][::-1]
+        hist_context = "\n".join([df.iloc[i]['rag_context'] for i in top_indices])
+        
+        full_context = f"{latest_context}\n\nHISTORICAL DB MATCHES:\n{hist_context}"
+
+        # 4. FIX PROBLEM 2: Extract Chat Memory! (Grab the last 5 messages)
+        history_text = ""
+        if 'chat' in st.session_state:
+            for msg in st.session_state.chat[-6:-1]: 
+                sender = "USER" if msg['role'] == 'user' else "OVIP_DAEMON"
+                history_text += f"{sender}: {msg['content']}\n"
+
+        # 5. Build the Gemini Brain (Using the fast & smart 1.5 Flash model)
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction="You are OVIP_DAEMON, an advanced cybersecurity and oil volatility AI terminal. Keep responses short, hacker-like, professional, and base them strictly on the provided data. You have access to the recent chat history to answer follow-up questions like 'why?'"
+        )
+        
+        prompt = f"""
+        [SYSTEM INJECTION: CONTEXT DATA]
+        {full_context}
+        
+        [SYSTEM INJECTION: RECENT CHAT MEMORY]
+        {history_text}
+        
+        USER_COMMAND: {user_query}
+        """
+        
+        # 6. Generate Response
+        response = model.generate_content(prompt)
+        return response.text.strip()
+        
     except Exception as e:
-        return f"⚠️ KERNEL_PANIC (System Fault): {str(e)}"
+        return f"⚠️ KERNEL_PANIC (Gemini API Fault): {str(e)}"
