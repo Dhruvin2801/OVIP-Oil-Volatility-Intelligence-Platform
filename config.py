@@ -1,102 +1,37 @@
-import streamlit as st
+"""
+OVIP CONFIGURATION - TACTICAL ESPIONAGE THEME
+"""
 
-# 🟢 THE MISSING DICTIONARY: 
-# Restored for the other pages, but updated with the Hacker Theme hex codes!
+# SPY THRILLER COLOR SCHEME
 COLORS = {
-    'background': '#020202',      # Deep Black
-    'surface': '#050505',         # Terminal Black
-    'accent_primary': '#00FF41',  # Matrix Green
-    'accent_secondary': '#008F11',# Darker Green
-    'text_primary': '#00FF41',    # Matrix Green
-    'text_secondary': '#008F11',  # Darker Green
-    'border': '#00FF41',          # Matrix Green
-    'danger': '#FF003C',          # Blood Red
-    'warning': '#FFD300'          # Cyber Yellow
+    'bg': '#000000',               # Pure pitch black background
+    'matrix': '#00FF41',           # Classic terminal hacker green
+    'cyan': '#00F0FF',             # Neon radar blue/cyan for charts
+    'alert': '#FF003C',            # Blood red for crisis warnings
+    'warning': '#FFD700',          # Yellow for elevated risk
+    'panel': 'rgba(0, 20, 0, 0.4)' # Translucent green glass for UI boxes
 }
 
-def apply_custom_theme():
-    st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-        
-        /* Deep Black Background & Terminal Font */
-        .stApp {
-            background-color: #020202;
-            color: #00FF41;
-            font-family: 'Share Tech Mono', monospace;
-        }
-
-        /* CRT Scanline Overlay */
-        .stApp::after {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-
-        /* Hacker Glow Effects */
-        h1, h2, h3, h4, p, span {
-            font-family: 'Share Tech Mono', monospace !important;
-            color: #00FF41 !important;
-            text-shadow: 0px 0px 8px rgba(0, 255, 65, 0.6);
-            letter-spacing: 1.5px;
-        }
-
-        /* Terminal Style Metric Boxes */
-        div[data-testid="stMetric"] {
-            background-color: #050505;
-            border: 1px solid #00FF41;
-            border-left: 5px solid #00FF41;
-            padding: 15px;
-            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
-            position: relative;
-        }
-        
-        div[data-testid="stMetric"]::before {
-            content: "[SYS.METRIC]";
-            font-size: 10px;
-            color: #008F11;
-            position: absolute;
-            top: 2px;
-            right: 5px;
-        }
-
-        /* Input Boxes & Buttons */
-        .stSelectbox div[data-baseweb="select"] {
-            background-color: #000 !important;
-            border: 1px solid #00FF41 !important;
-            color: #00FF41 !important;
-        }
-        
-        .stButton>button {
-            background-color: #020202;
-            color: #00FF41;
-            border: 1px solid #00FF41;
-            border-radius: 0px;
-            font-family: 'Share Tech Mono', monospace;
-            text-shadow: 0 0 5px #00FF41;
-            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
-            width: 100%;
-            transition: all 0.3s ease;
-        }
-        
-        .stButton>button:hover {
-            background-color: #00FF41;
-            color: #000;
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.8);
-        }
-
-        /* Chat Terminal */
-        .stChatInputContainer {
-            border: 1px solid #00FF41 !important;
-            background-color: #000 !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+# STRATEGIC TARGET NODES (Used by the 3D Satellite Globe)
+COUNTRIES = {
+    'USA': {
+        'lat': 37.09, 'lon': -95.71, 
+        'flag': '🇺🇸', 'name': 'UNITED STATES', 'oil': 'WTI Crude'
+    },
+    'CHINA': {
+        'lat': 35.86, 'lon': 104.20, 
+        'flag': '🇨🇳', 'name': 'PEOPLES REPUBLIC OF CHINA', 'oil': 'Daqing'
+    },
+    'INDIA': {
+        'lat': 20.59, 'lon': 78.96, 
+        'flag': '🇮🇳', 'name': 'REPUBLIC OF INDIA', 'oil': 'Indian Basket'
+    },
+    'UAE': {
+        'lat': 23.42, 'lon': 53.85, 
+        'flag': '🇦🇪', 'name': 'UNITED ARAB EMIRATES', 'oil': 'Dubai Crude'
+    },
+    'SAUDI': {
+        'lat': 23.89, 'lon': 45.08, 
+        'flag': '🇸🇦', 'name': 'KINGDOM OF SAUDI ARABIA', 'oil': 'Arab Light'
+    }
+}
