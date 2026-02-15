@@ -1,229 +1,240 @@
-"""
-OVIP - Oil Volatility Intelligence Platform
-Main Streamlit Application
-
-Run with: streamlit run app.py
-"""
-
 import streamlit as st
-from pathlib import Path
-import sys
+import pandas as pd
+import pydeck as pdk
+import plotly.graph_objects as go
+from datetime import datetime
+import os
 
-# Add root directory to path so imports work perfectly
-sys.path.append(str(Path(__file__).parent))
+# Ensure the AI module is accessible
+from modules.ai_engine import setup_rag_vector_db, get_ai_response
 
-# Import config (where our theme lives)
-import config
+# ==========================================
+# 1. CORE CONFIGURATION & THEME
+# ==========================================
+st.set_page_config(page_title="OVIP // COMMAND", layout="wide", initial_sidebar_state="collapsed")
 
-# Page configuration MUST be the first Streamlit command
-st.set_page_config(
-    page_title="OVIP - Oil Volatility Intelligence Platform",
-    page_icon="🛢️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+COLORS = {
+    'bg': '#000000',           # Pitch Black
+    'matrix': '#00FF41',       # Hacker Green
+    'cyan': '#00F0FF',         # Radar Cyan
+    'alert': '#FF003C',        # Threat Red
+    'panel': 'rgba(0, 20, 0, 0.6)' # Translucent green glass
+}
 
-# Apply custom theme from config.py
-config.apply_custom_theme()
+COUNTRIES = {
+    'USA': {'lat': 37.09, 'lon': -95.71, 'flag': '🇺🇸', 'name': 'UNITED STATES'},
+    'CHINA': {'lat': 35.86, 'lon': 104.20, 'flag': '🇨🇳', 'name': 'PEOPLES REPUBLIC OF CHINA'},
+    'INDIA': {'lat': 20.59, 'lon': 78.96, 'flag': '🇮🇳', 'name': 'REPUBLIC OF INDIA'},
+    'UAE': {'lat': 23.42, 'lon': 53.85, 'flag': '🇦🇪', 'name': 'UNITED ARAB EMIRATES'},
+    'SAUDI': {'lat': 23.89, 'lon': 45.08, 'flag': '🇸🇦', 'name': 'SAUDI ARABIA'}
+}
 
-def initialize_session_state():
-    """Ensures required variables exist before navigating to other pages"""
-    if 'market_display' not in st.session_state:
-        st.session_state['market_display'] = '🇺🇸 United States (WTI)'
-    if 'selected_market' not in st.session_state:
-        st.session_state['selected_market'] = 'WTI'
-    if 'chat_history' not in st.session_state:
-        st.session_state['chat_history'] = [
-            {"role": "assistant", "content": "SYSTEM ONLINE. Awaiting query..."}
-        ]
+# ==========================================
+# 2. SCI-FI CSS INJECTION (NO SCROLLING)
+# ==========================================
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    
+    /* Lock the screen, remove default padding */
+    html, body, [data-testid="stAppViewContainer"] {{
+        background-color: {COLORS['bg']};
+        color: {COLORS['matrix']};
+        font-family: 'Share Tech Mono', monospace !important;
+        overflow: hidden !important; 
+    }}
+    .block-container {{
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        max-width: 98% !important;
+    }}
+    
+    /* CRT Scanline Overlay */
+    .stApp::after {{
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        z-index: 999;
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
+    }}
 
-# Initialize session state
-initialize_session_state()
+    /* Hide ugly scrollbars but allow internal scrolling */
+    ::-webkit-scrollbar {{ display: none; }}
 
-def main():
-    """Main application entry point"""
+    /* Iron Man Cut-Corner Panels */
+    .st-emotion-cache-1wivap2, div[data-testid="stVerticalBlock"] > div.element-container {{
+        background: {COLORS['panel']};
+        border: 1px solid {COLORS['matrix']};
+        clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+        padding: 10px;
+        box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.1);
+    }}
+
+    /* Glowing Text */
+    h1, h2, h3, h4, p, span {{
+        font-family: 'Share Tech Mono', monospace !important;
+        text-shadow: 0 0 8px {COLORS['matrix']};
+        letter-spacing: 1.5px;
+    }}
     
-    # Header
-    col1, col2, col3 = st.columns([1, 3, 1])
+    /* Cyberpunk Buttons */
+    .stButton>button {{
+        background-color: transparent;
+        color: {COLORS['cyan']};
+        border: 1px solid {COLORS['cyan']};
+        border-radius: 0px;
+        width: 100%;
+        text-transform: uppercase;
+        transition: 0.3s;
+    }}
+    .stButton>button:hover {{
+        background-color: {COLORS['cyan']};
+        color: {COLORS['bg']};
+        box-shadow: 0 0 15px {COLORS['cyan']};
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 3. STATE MANAGEMENT & DATA LOADING
+# ==========================================
+if 'target' not in st.session_state:
+    st.session_state.target = None
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = 'intel'
+if 'chat' not in st.session_state:
+    st.session_state.chat = [{"role": "assistant", "content": "OVIP_DAEMON ONLINE. AWAITING TACTICAL QUERY..."}]
+
+@st.cache_data
+def load_data():
+    try:
+        df = pd.read_csv('merged_final_corrected.csv')
+        df['Date'] = pd.to_datetime(df['Date'])
+        return df
+    except:
+        # Fallback dummy data if CSV fails to load
+        return pd.DataFrame({'Date': pd.date_range(start='1/1/2024', periods=100), 'WTI': 75.0, 'Volatility': 0.15, 'Crisis_Prob': 0.0})
+
+df_main = load_data()
+vec, tfidf, rag_df = setup_rag_vector_db(df_main)
+
+# ==========================================
+# 4. VIEW 1: THE 3D SATELLITE GLOBE
+# ==========================================
+def render_globe():
+    st.markdown("<h2 style='text-align: center; color: #00F0FF;'>[ OVIP // GLOBAL_THREAT_MATRIX ]</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>AWAITING SATELLITE UPLINK TARGET...</p>", unsafe_allow_html=True)
     
-    with col1:
-        # Graceful fallback if logo doesn't exist yet
-        if Path("assets/images/logo.png").exists():
-            st.image("assets/images/logo.png", width=100)
-        else:
-            st.markdown("<h1 style='font-size: 3rem; margin:0;'>🛢️</h1>", unsafe_allow_html=True)
+    # Globe Data
+    df_nodes = pd.DataFrame.from_dict(COUNTRIES, orient='index').reset_index()
+    df_nodes.columns = ['ID', 'lat', 'lon', 'flag', 'name']
     
-    with col2:
-        st.markdown(
-            "<h1 style='text-align: center; color: #64FFDA; margin-bottom: 0;'>OIL VOLATILITY INTELLIGENCE PLATFORM</h1>",
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            "<p style='text-align: center; color: #8892B0; font-size: 1.2rem;'>Next-Generation Volatility Prediction for Strategic Decision-Making</p>",
-            unsafe_allow_html=True
-        )
+    # WebGL Layers
+    layer_nodes = pdk.Layer("ScatterplotLayer", df_nodes, get_position="[lon, lat]", get_color="[0, 255, 65, 200]", get_radius=400000, pickable=True)
     
-    with col3:
-        st.write("") # Spacing
-        if st.button("⚙️ Settings", use_container_width=True):
-            try:
-                st.switch_page("pages/7_⚙️_Settings.py")
-            except:
-                st.warning("Settings page not yet created.")
+    view_state = pdk.ViewState(latitude=25, longitude=40, zoom=1.2, pitch=45, bearing=15)
     
-    st.markdown("<hr style='border: 1px solid #1E3A5F; box-shadow: 0 0 10px rgba(100, 255, 218, 0.2);'>", unsafe_allow_html=True)
+    st.pydeck_chart(pdk.Deck(layers=[layer_nodes], initial_view_state=view_state, map_style="mapbox://styles/mapbox/dark-v10"), height=500)
     
-    # Welcome section
-    st.markdown("### 👋 Welcome to OVIP")
+    # Target Selection Selector
+    st.markdown("```bash\n> INITIATE_NODE_LINK --target\n```")
+    cols = st.columns(5)
+    for i, (code, data) in enumerate(COUNTRIES.items()):
+        with cols[i]:
+            if st.button(f"{data['flag']} {code}"):
+                st.session_state.target = code
+                st.rerun()
+
+# ==========================================
+# 5. VIEW 2: THE COMMAND DASHBOARD
+# ==========================================
+def render_dashboard():
+    target = st.session_state.target
+    data = COUNTRIES[target]
+    latest_data = df_main.iloc[-1]
     
-    st.markdown("""
-    <div style='background-color: #112240; padding: 20px; border-radius: 5px; border-left: 3px solid #64FFDA;'>
-        OVIP is an <strong>intelligence-grade platform</strong> for oil market volatility prediction, combining:
-        <br><br>
-        <ul>
-            <li>🎯 <strong>NPRS-1 Binary Classifier</strong> - 68.2% accuracy for direction prediction</li>
-            <li>📊 <strong>11-Pillar Regression Model</strong> - 22.5% R² for volatility level forecasting</li>
-            <li>🤖 <strong>AI-Powered Insights</strong> - Natural language explanations and recommendations</li>
-            <li>🌍 <strong>Multi-Market Coverage</strong> - WTI, Brent, Dubai, and more</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Quick stats
-    st.markdown("### 📈 Live Market Snapshot")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric(label="🇺🇸 WTI Crude", value="$78.34", delta="4.2%", help="West Texas Intermediate")
-    with col2:
-        st.metric(label="Current Volatility", value="0.187", delta="-2.1%", delta_color="inverse", help="Realized monthly volatility")
-    with col3:
-        st.metric(label="Regime State", value="🟡 MODERATE", help="Current market regime")
-    with col4:
-        st.metric(label="Model Confidence", value="68%", help="NPRS-1 prediction confidence")
-    
-    st.markdown("---")
-    
-    # Navigation
-    st.markdown("### 🧭 Quick Navigation")
-    
-    # Row 1 of Navigation
-    n1, n2, n3 = st.columns(3)
-    
-    with n1:
-        if st.button("🌍 **Select Target Market**", use_container_width=True):
-            st.switch_page("pages/1_🌍_Country_Selector.py")
-        st.caption("Choose your target oil market via 3D Globe")
-    
-    with n2:
-        if st.button("📊 **Command Center Dashboard**", use_container_width=True, type="primary"):
-            st.switch_page("pages/2_📊_Dashboard.py")
-        st.caption("Live data, threat matrix, and predictions")
-    
-    with n3:
-        if st.button("💬 **AI Analyst Terminal**", use_container_width=True):
-            st.switch_page("pages/3_💬_AI_Assistant.py")
-        st.caption("Ask questions, get data-driven insights")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Row 2 of Navigation
-    n4, n5, n6 = st.columns(3)
-    
-    with n4:
-        if st.button("📈 **Deep Analytics**", use_container_width=True):
-            try: st.switch_page("pages/4_📈_Analytics.py")
-            except: st.warning("Module pending.")
-        st.caption("Detailed model performance & residual analysis")
-    
-    with n5:
-        if st.button("🔔 **Manage Alerts**", use_container_width=True):
-            try: st.switch_page("pages/5_🔔_Alerts.py")
-            except: st.warning("Module pending.")
-        st.caption("Set up regime shift notifications")
-    
-    with n6:
-        if st.button("📄 **Generate Reports**", use_container_width=True):
-            try: st.switch_page("pages/6_📄_Reports.py")
-            except: st.warning("Module pending.")
-        st.caption("Export executive summaries (PDF/CSV)")
-    
-    st.markdown("---")
-    
-    # Key features
-    st.markdown("### ⭐ Key Capabilities")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        **🎯 Dual-Model Prediction System:**
-        * **Direction (Up/Down):** 68.2% out-of-sample accuracy via NPRS-1.
-        * **Level (Exact volatility):** 22.5% R² capturing market shocks.
-        * *Performance:* Outperforms traditional GARCH baselines by a significant margin.
-        
-        **🤖 RAG AI Intelligence:**
-        * Natural language Q&A secured by factual context retrieval.
-        * Automated hedging recommendations.
-        * Explainable predictions bridging the gap between quant models and business logic.
-        """)
-    
-    with col2:
-        st.markdown("""
-        **🌍 Global Market Support:**
-        * Coverage across WTI (US), Brent (UK), and Dubai (UAE).
-        * Customizable indicators per region.
-        
-        **🔔 Smart Alerts & Reporting:**
-        * Real-time regime shift detection (Calm → Crisis).
-        * Price spike warnings and custom threshold triggers.
-        * One-click generation of professional performance reviews.
-        """)
-    
-    st.markdown("---")
-    
-    # Footer Expanders
-    st.markdown("### 📚 About OVIP")
-    
-    with st.expander("ℹ️ The 'Crisis Memory' Innovation"):
-        st.markdown("""
-        **Key Innovation:** OVIP utilizes a regime-switching framework where the probability of a market crisis drives the predictions. 
-        
-        Our core research proved the **Crisis Memory Hypothesis**: By forcing the model to learn from the 2000-2001 Dot-Com crash and 9/11 shock, the model's accuracy in predicting the 2022 Energy Crisis improved by nearly 1%. 
-        
-        Traditional models rely on persistence (recent history). OVIP relies on *regime recognition* (historical trauma).
-        """)
-    
-    with st.expander("📊 Model Validation"):
-        st.markdown("""
-        **Statistical Validation:**
-        * **Clark-West Test:** p = 0.0062 (Highly significant improvement over baseline).
-        * **Granger Causality:** Confirmed for NLP Sentiment driving volatility.
-        * **VIF Check:** Max 5.36 (No problematic multicollinearity in the 11-pillar features).
-        """)
-    
-    with st.expander("⚠️ Limitations & Disclaimers"):
-        st.markdown("""
-        **Recommended Usage:**
-        * Use **NPRS-1** for all directional decisions (highly reliable).
-        * Use the **11-Pillar Regression** to estimate the *magnitude* of the risk.
-        * Revalidate models quarterly as macroeconomic conditions shift.
-        
-        **Disclaimer:**
-        *This platform is a demonstration of academic/quantitative research and is for informational purposes only. It does not constitute financial advice. Always consult with qualified professionals before executing trades or hedges.*
-        """)
-    
-    st.markdown("---")
-    
-    # Footer
-    st.markdown("""
-    <div style='text-align: center; color: #8892B0; font-family: "Roboto Mono", monospace;'>
-        <p>STATUS: ONLINE | LATENCY: 12ms | © 2026 OVIP - All Rights Reserved</p>
-    </div>
+    # TOP HUD HEADER
+    st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid {COLORS['cyan']}; padding-bottom: 5px; margin-bottom: 15px;">
+            <h2 style="margin: 0; color: {COLORS['cyan']};">NODE_ACTIVE :: {target} {data['flag']} - {data['name']}</h2>
+            <span style="color: {COLORS['matrix']};">UPLINK_SECURE | {datetime.utcnow().strftime('%H:%M:%S')} UTC</span>
+        </div>
     """, unsafe_allow_html=True)
 
-if __name__ == '__main__':
-    main()
+    # TWO-COLUMN HUD LAYOUT
+    col_nav, col_main = st.columns([1, 4])
+    
+    # --- LEFT SIDEBAR (NAVIGATION & LIVE METRICS) ---
+    with col_nav:
+        st.markdown("<div style='background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #00F0FF;'>", unsafe_allow_html=True)
+        if st.button("🔴 DISCONNECT_NODE"):
+            st.session_state.target = None
+            st.rerun()
+            
+        st.markdown("<hr style='border: 1px dashed #00FF41;'>", unsafe_allow_html=True)
+        st.markdown("### SYSTEM_METRICS")
+        st.metric("WTI_INDEX", f"${latest_data['WTI']:.2f}")
+        st.metric("VOL_SIGMA", f"{latest_data['Volatility']:.3f}")
+        st.metric("NPRS-1_SIGNAL", "▲ UP", "69.1% ACCURACY")
+        
+        st.markdown("<hr style='border: 1px dashed #00FF41;'>", unsafe_allow_html=True)
+        st.markdown("### INTERFACE")
+        if st.button("🎯 INTELLIGENCE"): st.session_state.active_tab = 'intel'; st.rerun()
+        if st.button("💬 AI_DAEMON"): st.session_state.active_tab = 'ai'; st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # --- RIGHT MAIN AREA (DYNAMIC CONTENT) ---
+    with col_main:
+        # TACTICAL INTELLIGENCE TAB
+        if st.session_state.active_tab == 'intel':
+            st.markdown(f"#### > ANALYZING {target} TACTICAL DATA_STREAMS...")
+            
+            # Interactive Plotly Chart (Locked to 450px height so it doesn't scroll)
+            fig = go.Figure()
+            fig.update_layout(
+                template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,20,0,0.3)',
+                height=450, margin=dict(l=0, r=0, t=30, b=0),
+                xaxis=dict(showgrid=True, gridcolor='#003300'), yaxis=dict(showgrid=True, gridcolor='#003300')
+            )
+            fig.add_trace(go.Scatter(
+                x=df_main['Date'][-100:], y=df_main['Volatility'][-100:], 
+                name='Vol', line=dict(color=COLORS['cyan'], width=2), 
+                fill='tozeroy', fillcolor='rgba(0, 240, 255, 0.1)'
+            ))
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+        # AI DAEMON TAB (THE GROQ TERMINAL)
+        elif st.session_state.active_tab == 'ai':
+            st.markdown("#### > DAEMON_V3 :: SECURE QUANTITATIVE AI UPLINK")
+            
+            # Scrollable chat box with fixed height
+            chat_container = st.container(height=450, border=False)
+            with chat_container:
+                for msg in st.session_state.chat:
+                    color = COLORS['cyan'] if msg['role'] == 'user' else COLORS['matrix']
+                    sender = "root@user" if msg['role'] == 'user' else "system@ovip"
+                    st.markdown(f"<p style='color: {color};'><b>{sender}:~$</b> {msg['content']}</p>", unsafe_allow_html=True)
+            
+            # Chat Input Form
+            if prompt := st.chat_input("> ENTER_COMMAND_STRING..."):
+                st.session_state.chat.append({"role": "user", "content": prompt})
+                st.rerun()
+
+            # Process AI response seamlessly
+            if st.session_state.chat[-1]["role"] == "user":
+                with st.spinner("PROCESSING_INTELLIGENCE_ROUTINE..."):
+                    ans = get_ai_response(st.session_state.chat[-1]["content"], vec, tfidf, rag_df)
+                    st.session_state.chat.append({"role": "assistant", "content": ans})
+                    st.rerun()
+
+# ==========================================
+# 6. APP ROUTER
+# ==========================================
+if st.session_state.target is None:
+    render_globe()
+else:
+    render_dashboard()
