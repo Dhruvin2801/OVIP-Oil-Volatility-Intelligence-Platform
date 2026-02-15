@@ -112,7 +112,7 @@ if 'chat' not in st.session_state:
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv('merged_final_corrected.csv')
+        df = pd.read_csv('merged_final.csv')
         df['Date'] = pd.to_datetime(df['Date'])
         return df
     except:
