@@ -1,123 +1,192 @@
 import streamlit as st
 import pandas as pd
-import pydeck as pdk
 import plotly.graph_objects as go
 from datetime import datetime
 import os
 from modules.ai_engine import setup_rag_vector_db, get_ai_response
 from config import COLORS, COUNTRIES
 
-# 1. SYS INIT
-st.set_page_config(page_title="OVIP // HUD", layout="wide", initial_sidebar_state="collapsed")
+# ==========================================
+# 1. CORE SYSTEM CONFIGURATION
+# ==========================================
+st.set_page_config(page_title="OVIP // TACTICAL_OS", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. ARWES STYLE INJECTION
-st.markdown(f"""
+# ==========================================
+# 2. ARWES-STYLE CYBERPUNK CSS & SOUND ENGINE
+# ==========================================
+st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Source+Code+Pro&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
     
-    html, body, [data-testid="stAppViewContainer"] {{
-        background-color: #000 !important;
-        color: {COLORS['matrix']} !important;
-        font-family: 'Source Code Pro', monospace !important;
-        overflow: hidden !important; /* NO SCROLLING */
-        height: 100vh;
-    }}
+    /* BASE THEME */
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #000500 !important;
+        color: #00ff41 !important;
+        font-family: 'Share Tech Mono', monospace !important;
+    }
+    
+    /* CRT SCANLINE SHADER */
+    .stApp::after {
+        content: " "; display: block; position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 20, 0, 0.1) 50%);
+        z-index: 999; background-size: 100% 4px; pointer-events: none;
+    }
 
-    /* ARWES VECTOR PANEL */
-    .arwes-panel {{
-        border: 1px solid {COLORS['matrix']};
-        background: rgba(0, 40, 0, 0.2);
-        padding: 20px;
-        position: relative;
-        clip-path: polygon(0 15px, 15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
-        box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
-        height: 550px; /* LOCKS MIDDLE SPACE */
-    }}
+    /* NEON FRAMING FOR COLUMNS/CONTAINERS */
+    [data-testid="stVerticalBlock"] > div {
+        background: rgba(0, 20, 0, 0.4);
+        border: 1px solid #00ff41;
+        box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.1);
+        border-radius: 5px;
+    }
+    
+    /* HACKER TABS */
+    .stTabs [data-baseweb="tab-list"] { background-color: transparent; border-bottom: 1px solid #00ff41; }
+    .stTabs [data-baseweb="tab"] { color: #00f0ff !important; font-family: 'Orbitron', sans-serif !important; }
+    .stTabs [aria-selected="true"] { background: rgba(0, 255, 65, 0.15) !important; border: 1px solid #00ff41 !important; border-bottom: none !important;}
 
-    /* GLOWING BUTTONS */
-    .stButton > button {{
-        background: transparent !important;
-        border: 1px solid {COLORS['matrix']} !important;
-        color: {COLORS['matrix']} !important;
-        font-family: 'Orbitron' !important;
-        text-transform: uppercase;
-        border-radius: 0 !important;
-        transition: 0.3s;
-    }}
-    .stButton > button:hover {{
-        background: {COLORS['matrix']} !important;
-        color: #000 !important;
-        box-shadow: 0 0 20px {COLORS['matrix']};
-    }}
-
-    /* HIDE DEFAULTS */
-    header, footer, #MainMenu {{ visibility: hidden; }}
+    /* GLOWING HEADERS & BUTTONS */
+    h1, h2, h3, [data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif !important; text-shadow: 0 0 10px #00ff41; }
+    .stButton>button {
+        background: transparent !important; color: #00f0ff !important; border: 1px solid #00f0ff !important;
+        font-family: 'Orbitron', sans-serif !important; width: 100%; transition: 0.3s;
+    }
+    .stButton>button:hover { background: #00f0ff !important; color: #000 !important; box-shadow: 0 0 15px #00f0ff; }
 </style>
 
 <script>
-    // TACTICAL SOUNDS
+    // TACTICAL AUDIO BEEP ON CLICK
     const actx = new (window.AudioContext || window.webkitAudioContext)();
-    document.addEventListener('click', () => {{
-        const o = actx.createOscillator();
-        const g = actx.createGain();
-        o.type='square'; o.frequency.value=1000;
-        g.gain.value=0.02; o.connect(g); g.connect(actx.destination);
+    document.addEventListener('click', () => {
+        const o = actx.createOscillator(); const g = actx.createGain();
+        o.type='square'; o.frequency.value=850;
+        g.gain.value=0.03; o.connect(g); g.connect(actx.destination);
         o.start(); o.stop(actx.currentTime+0.05);
-    }});
+    });
 </script>
 """, unsafe_allow_html=True)
 
-# 3. CORE LOGIC
+# ==========================================
+# 3. STATE MANAGEMENT & DATA UPLINK
+# ==========================================
 if 'target' not in st.session_state: st.session_state.target = None
-if 'tab' not in st.session_state: st.session_state.tab = 'intel'
+if 'chat_history' not in st.session_state: st.session_state.chat_history = []
 
-# DATA
 @st.cache_data
-def load_sys_data():
-    f = 'merged_fnal.csv'
-    if os.path.exists(f): 
-        df = pd.read_csv(f)
-        df['Date'] = pd.to_datetime(df['Date'])
-        return df
-    return pd.DataFrame({'Date':[pd.Timestamp.now()], 'WTI':[0], 'Volatility':[0], 'Crisis_Prob':[0]})
+def load_data():
+    for f in ['merged_fnal.csv', 'merged_final.csv', 'merged_final_corrected.csv']:
+        if os.path.exists(f): 
+            df = pd.read_csv(f)
+            df['Date'] = pd.to_datetime(df['Date'])
+            return df
+    # Failsafe dummy data
+    return pd.DataFrame({'Date':[pd.Timestamp.now()], 'WTI':[75.0], 'Volatility':[0.15], 'Crisis_Prob':[0.0]})
 
-df = load_sys_data()
-vec, tfidf, rag_df = setup_rag_vector_db(df)
+df_main = load_data()
+vec, tfidf, rag_df = setup_rag_vector_db(df_main)
 
-# 4. ROUTING
+# ==========================================
+# 4. VIEW 1: THE HOLOGRAPHIC 3D GLOBE
+# ==========================================
 if st.session_state.target is None:
-    # GLOBE VIEW
-    st.markdown("<h1 style='text-align:center; font-family:Orbitron;'>[ TARGET_ACQUISITION ]</h1>", unsafe_allow_html=True)
-    st.pydeck_chart(pdk.Deck(
-        initial_view_state=pdk.ViewState(latitude=20, longitude=50, zoom=1.5),
-        map_style="mapbox://styles/mapbox/dark-v11",
-        layers=[pdk.Layer("ArcLayer", data=[{'s':[-95,37], 't':[78,20]}], get_source_position='s', get_target_position='t', get_source_color=[0,255,65], get_target_color=[0,240,255], width=2)]
-    ), height=500)
+    st.markdown("<h1 style='text-align:center;'>[ GLOBAL_THREAT_MATRIX ]</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#00f0ff;'>>> CLICK ON A TARGET NODE ON THE GLOBE TO INITIATE UPLINK</p>", unsafe_allow_html=True)
     
-    cols = st.columns(5)
-    for i, node in enumerate(COUNTRIES.keys()):
-        if cols[i].button(f"LINK::{node}"): st.session_state.target = node; st.rerun()
+    # Extract Coordinates
+    lats = [c['lat'] for c in COUNTRIES.values()]
+    lons = [c['lon'] for c in COUNTRIES.values()]
+    names = list(COUNTRIES.keys())
+    
+    # Build 3D Scattergeo Plot
+    fig = go.Figure(go.Scattergeo(
+        lon = lons, lat = lats, text = names, mode = 'markers+text',
+        marker = dict(size=14, color='#00f0ff', symbol='square', line=dict(width=2, color='#00ff41')),
+        textfont = dict(family="Orbitron", size=18, color="#00ff41"),
+        textposition = "top center", hoverinfo="text"
+    ))
+    
+    # Style as Hologram Wireframe
+    fig.update_geos(
+        projection_type="orthographic",
+        showcoastlines=True, coastlinecolor="rgba(0, 255, 65, 0.4)",
+        showland=True, landcolor="rgba(0, 15, 0, 0.8)",
+        showocean=True, oceancolor="rgba(0, 0, 0, 1)",
+        showcountries=True, countrycolor="rgba(0, 255, 65, 0.2)",
+        bgcolor="rgba(0,0,0,0)"
+    )
+    fig.update_layout(height=650, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    
+    # Render Interactive Globe (Click to Select)
+    try:
+        event = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points")
+        if event and "selection" in event and event["selection"]["points"]:
+            selected_idx = event["selection"]["points"][0]["point_index"]
+            st.session_state.target = names[selected_idx]
+            st.session_state.chat_history = [] # Reset chat for new country
+            st.rerun()
+    except:
+        # Fallback if Streamlit version doesn't support on_select
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown("### MANUAL OVERRIDE:")
+        cols = st.columns(5)
+        for i, n in enumerate(names):
+            if cols[i].button(n): st.session_state.target = n; st.session_state.chat_history = []; st.rerun()
 
+# ==========================================
+# 5. VIEW 2: THE COMMAND DASHBOARD
+# ==========================================
 else:
-    # DASHBOARD VIEW
-    st.markdown(f"<h2 style='color:#00f0ff; border-bottom:1px solid #00f0ff;'>NODE::{st.session_state.target}</h2>", unsafe_allow_html=True)
+    target = st.session_state.target
+    latest = df_main.iloc[-1]
     
-    c_nav, c_main = st.columns([1, 4])
-    with c_nav:
-        if st.button("🔴 DISCONNECT"): st.session_state.target = None; st.rerun()
-        st.metric("VOL_SIGMA", f"{df.iloc[-1]['Volatility']:.3f}")
-        if st.button("🎯 TACTICAL"): st.session_state.tab='intel'; st.rerun()
-        if st.button("🤖 DAEMON"): st.session_state.tab='ai'; st.rerun()
+    c_side, c_main = st.columns([1, 3])
+    
+    # -- SIDE PANEL: METRICS & CONTROLS --
+    with c_side:
+        st.markdown(f"### 📍 NODE::{target}")
+        st.markdown("---")
+        st.metric("WTI_INDEX", f"${latest.get('WTI', 0):.2f}")
+        st.metric("VOL_SIGMA", f"{latest.get('Volatility', 0):.3f}")
+        st.metric("CRISIS_PROB", f"{latest.get('Crisis_Prob', latest.get('Regime_Prob', 0)):.2f}")
+        st.markdown("---")
+        if st.button("🔴 DISCONNECT_LINK"):
+            st.session_state.target = None
+            st.rerun()
 
+    # -- MAIN PANEL: TABS --
     with c_main:
-        # WRAP IN ARWES PANEL TO PREVENT BLANK MIDDLE
-        st.markdown("<div class='arwes-panel'>", unsafe_allow_html=True)
-        if st.session_state.tab == 'intel':
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df['Date'][-60:], y=df['Volatility'][-60:], line=dict(color="#00f0ff", width=3), fill='tozeroy'))
-            fig.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(l=0,r=0,t=0,b=0))
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            if prompt := st.chat_input("QUERY_DAEMON..."):
-                st.write(f"**OVIP:** {get_ai_response(prompt, vec, tfidf, rag_df)}")
-        st.markdown("</div>", unsafe_allow_html=True)
+        tab_intel, tab_ai = st.tabs(["[ 📊 TACTICAL_INTEL ]", "[ 🤖 DAEMON_AI_UPLINK ]"])
+        
+        # TAB 1: CHARTS
+        with tab_intel:
+            st.markdown("#### > VOLATILITY_WAVEFORM_ANALYSIS")
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(x=df_main['Date'][-100:], y=df_main['Volatility'][-100:], 
+                                      line=dict(color="#00f0ff", width=3), fill='tozeroy', fillcolor='rgba(0, 240, 255, 0.1)'))
+            fig2.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(l=0,r=0,t=10,b=0))
+            st.plotly_chart(fig2, use_container_width=True)
+            
+        # TAB 2: AI CHAT INTERFACE
+        with tab_ai:
+            st.markdown(f"#### > ENCRYPTED COMMS OPEN: {target} REGION")
+            
+            # Render chat history
+            for msg in st.session_state.chat_history:
+                with st.chat_message(msg["role"]):
+                    st.write(msg["content"])
+            
+            # Chat Input
+            if prompt := st.chat_input("TRANSMIT_QUERY..."):
+                # Show user message
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                with st.chat_message("user"): st.write(prompt)
+                
+                # Show AI response
+                with st.chat_message("assistant"):
+                    with st.spinner("DECRYPTING_RESPONSE..."):
+                        # Inject country context into the AI query
+                        country_prompt = f"Regarding {target}: {prompt}"
+                        ans = get_ai_response(country_prompt, vec, tfidf, rag_df)
+                        st.write(ans)
+                st.session_state.chat_history.append({"role": "assistant", "content": ans})
