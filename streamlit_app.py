@@ -127,7 +127,7 @@ c4.metric("NPRS-1_AI_SIGNAL", "UP_TREND", "CONFIRMED")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================
-# 5. MAIN EVENT CHART (PLOTLY 6.0 COMPLIANT)
+# 5. MAIN EVENT CHART (BULLETPROOF LAYOUT)
 # ==========================================
 st.markdown("### > MACRO-EVENT VOLATILITY IMPACT MATRIX")
 
@@ -153,32 +153,43 @@ try:
     mid_date = chart_df['Date'].iloc[len(chart_df)//3]
     late_date = chart_df['Date'].iloc[int(len(chart_df)//1.5)]
 
-    # Pass native datetime object directly
-    fig.add_vline(x=mid_date, line_width=2, line_dash="dash", line_color="#FF003C")
-    fig.add_vline(x=late_date, line_width=2, line_dash="dash", line_color="#FFD700")
+    # Format explicitly to YYYY-MM-DD to prevent Plotly date-parsing ValueErrors
+    mid_str = mid_date.strftime('%Y-%m-%d')
+    late_str = late_date.strftime('%Y-%m-%d')
 
-    fig.add_annotation(x=mid_date, y=max_vol, text="[ US TARIFFS ]", showarrow=False, yshift=15, font=dict(color="#FF003C", family="Orbitron"))
-    fig.add_annotation(x=late_date, y=max_vol * 0.9, text="[ OPEC POLICY ]", showarrow=False, yshift=15, font=dict(color="#FFD700", family="Orbitron"))
+    fig.add_vline(x=mid_str, line_width=2, line_dash="dash", line_color="#FF003C")
+    fig.add_vline(x=late_str, line_width=2, line_dash="dash", line_color="#FFD700")
+
+    fig.add_annotation(x=mid_str, y=max_vol, text="[ US TARIFFS ]", showarrow=False, yshift=15, font=dict(color="#FF003C", family="Orbitron"))
+    fig.add_annotation(x=late_str, y=max_vol * 0.9, text="[ OPEC POLICY ]", showarrow=False, yshift=15, font=dict(color="#FFD700", family="Orbitron"))
 except Exception as e:
-    pass # Silent failsafe if dataset is too short
+    pass # Silent failsafe
 
-# Updated syntax for Plotly 6.0 (nesting font inside title dict)
+# BULLETPROOF LAYOUT: Using "magic underscores" avoids nested dictionary crashes
 fig.update_layout(
-    template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,20,0,0.2)',
-    height=450, margin=dict(l=0, r=0, t=30, b=0),
-    xaxis=dict(showgrid=True, gridcolor='rgba(0, 255, 65, 0.1)'),
-    yaxis=dict(
-        title=dict(text="Volatility (Sigma)", font=dict(color="#00f0ff")), 
-        tickfont=dict(color="#00f0ff"), 
-        showgrid=True, 
-        gridcolor='rgba(0, 255, 65, 0.1)'
-    ),
-    yaxis2=dict(
-        title=dict(text="WTI Price (USD)", font=dict(color="#00ff41")), 
-        tickfont=dict(color="#00ff41"), 
-        overlaying='y', side='right', showgrid=False
-    ),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    template='plotly_dark', 
+    paper_bgcolor='rgba(0,0,0,0)', 
+    plot_bgcolor='rgba(0,20,0,0.2)',
+    height=450, 
+    margin=dict(l=0, r=0, t=30, b=0),
+    xaxis_showgrid=True, 
+    xaxis_gridcolor='rgba(0, 255, 65, 0.1)',
+    yaxis_title="Volatility (Sigma)", 
+    yaxis_title_font_color="#00f0ff", 
+    yaxis_tickfont_color="#00f0ff", 
+    yaxis_showgrid=True, 
+    yaxis_gridcolor='rgba(0, 255, 65, 0.1)',
+    yaxis2_title="WTI Price (USD)", 
+    yaxis2_title_font_color="#00ff41", 
+    yaxis2_tickfont_color="#00ff41", 
+    yaxis2_overlaying='y', 
+    yaxis2_side='right', 
+    yaxis2_showgrid=False,
+    legend_orientation="h", 
+    legend_yanchor="bottom", 
+    legend_y=1.02, 
+    legend_xanchor="right", 
+    legend_x=1
 )
 st.plotly_chart(fig, use_container_width=True)
 
