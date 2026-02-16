@@ -28,7 +28,6 @@ st.markdown("""
         height: 100vh !important;
     }
     
-    /* SAFE PADDING: Prevents the title from getting cut off */
     .block-container {
         padding-top: 1rem !important; 
         padding-bottom: 0rem !important;
@@ -69,12 +68,12 @@ st.markdown("""
         margin-bottom: 0 !important;
     }
 
-    /* NEON BLUE METRICS */
+    /* ALL METRICS ARE NEON BLUE NOW */
     [data-testid="stMetricValue"] {
         font-family: 'JetBrains Mono', monospace !important;
         font-weight: 700 !important;
         color: #00f0ff !important; 
-        text-shadow: 0 0 5px rgba(0, 240, 255, 0.3);
+        text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
     }
     
     [data-testid="stMetricLabel"] {
@@ -97,11 +96,20 @@ st.markdown("""
         color: #000 !important;
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
+    
+    /* HUD Box Styling */
+    .hud-box {
+        background: rgba(0, 240, 255, 0.03); 
+        border: 1px solid rgba(0, 240, 255, 0.2); 
+        padding: 8px 15px; 
+        border-radius: 2px;
+        box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.02);
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. DATA PIPELINE & HELPERS
+# 2. DATA PIPELINE
 # ==========================================
 @st.cache_data
 def load_data():
@@ -131,27 +139,13 @@ def hex_to_rgba(hex_code, alpha=0.1):
         return f'rgba({int(hex_code[0:2], 16)},{int(hex_code[2:4], 16)},{int(hex_code[4:6], 16)},{alpha})'
     return f'rgba(0,240,255,{alpha})'
 
-# Generates HUD Mini-Graphs
-def create_sparkline(data, column, color, title):
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=data['Date'], y=data[column], mode='lines',
-        line=dict(color=color, width=2, shape='spline'), fill='tozeroy', fillcolor=hex_to_rgba(color, 0.15)
-    ))
-    fig.update_layout(
-        height=60, margin=dict(l=0, r=0, t=20, b=0),
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False,
-        xaxis=dict(visible=False, fixedrange=True), yaxis=dict(visible=False, fixedrange=True),
-        title=dict(text=title, font=dict(color="#94a3b8", size=10, family="JetBrains Mono"), y=0.95, x=0.0)
-    )
-    return fig
-
 # ==========================================
 # 3. GLOBAL NODE DATABASE
 # ==========================================
 if 'target' not in st.session_state: st.session_state.target = None
 
-C_SAFE = '#00f0ff' # Safe is now Blue
+# ALL GREEN REMOVED. Safe/Low Risk is now Neon Blue.
+C_SAFE = '#00f0ff' 
 C_WARN = '#ffd700'
 C_DANG = '#ff003c'
 
@@ -218,19 +212,38 @@ def ai_terminal():
 # 5. MAIN VIEW: GLOBE OR DASHBOARD
 # ==========================================
 if st.session_state.target is None:
-    # --- GLOBE VIEW WITH HUD SPARKLINES ---
-    c_head, c_spark1, c_spark2, c_btn = st.columns([3.5, 2.5, 2.5, 1.5]) 
+    # --- GLOBE VIEW WITH TEXT HUD ---
+    c_head, c_hud1, c_hud2, c_btn = st.columns([3.5, 3, 3, 1.5]) 
     
     with c_head:
-        st.markdown("<h2 style='margin-top: 0px; font-size: 1.8rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='margin-top: 5px; font-size: 1.8rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
         st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 12px; margin-top: -5px;'>> AWAITING_TARGET...</p>", unsafe_allow_html=True)
     
-    # Generate the HUD mini-graphs
-    spark_df = df_main.dropna(subset=['Date']).tail(30)
-    with c_spark1:
-        st.plotly_chart(create_sparkline(spark_df, 'Volatility', '#00f0ff', "30D GLOBAL VOLATILITY"), use_container_width=True, config={'displayModeBar': False})
-    with c_spark2:
-        st.plotly_chart(create_sparkline(spark_df, 'WTI', '#00f0ff', "30D WTI INDEX"), use_container_width=True, config={'displayModeBar': False})
+    # TEXT HUD 1: Replaces the empty boxes with cool Sci-Fi data
+    with c_hud1:
+        st.markdown("""
+        <div class='hud-box'>
+            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ NPRS-1 ENGINE ]</div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                STATUS: <span style='color: #00f0ff;'>ONLINE</span><br>
+                CONFIDENCE: <span style='color: #00f0ff;'>68.2% (UP_TREND)</span><br>
+                NEXT_CYCLE: 12H:45M:03S
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # TEXT HUD 2: Global Macro Status
+    with c_hud2:
+        st.markdown("""
+        <div class='hud-box'>
+            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ MACRO_ENVIRONMENT ]</div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                REGIME: <span style='color: #ffd700;'>MODERATE_RISK</span><br>
+                CATALYST: TARIFF_POLICY_SHIFT<br>
+                VOLATILITY: <span style='color: #00f0ff;'>ELEVATED (+1.4%)</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
     with c_btn:
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
@@ -264,27 +277,44 @@ if st.session_state.target is None:
         st.rerun()
 
 else:
-    # --- COUNTRY DASHBOARD VIEW WITH HUD SPARKLINES ---
+    # --- COUNTRY DASHBOARD VIEW WITH TEXT HUD ---
     target = st.session_state.target
     intel = COUNTRIES[target]
     latest = df_main.iloc[-1]
     mod = intel['mod']
     
     # Header with HUD
-    c_head, c_spark1, c_spark2, c_btn1, c_btn2 = st.columns([3.5, 2.5, 2.5, 1.2, 1.2])
+    c_head, c_hud1, c_hud2, c_btn1, c_btn2 = st.columns([3, 2.5, 2.5, 1.2, 1.2])
     
     with c_head:
-        st.markdown(f"<h2 style='color:{intel['color']}; margin-top: 0px; font-size: 1.8rem;'>NODE::{target}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{intel['color']}; margin-top: 5px; font-size: 1.8rem;'>NODE::{target}</h2>", unsafe_allow_html=True)
         st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 12px; margin-top: -5px;'>> UPLINK_ESTABLISHED</p>", unsafe_allow_html=True)
     
-    spark_df = df_main.dropna(subset=['Date']).tail(30).copy()
-    spark_df['Local_Vol'] = spark_df['Volatility'] * mod
-    spark_df['Local_GPR'] = spark_df['gpr'] * mod
-    
-    with c_spark1:
-        st.plotly_chart(create_sparkline(spark_df, 'Local_Vol', intel['color'], f"30D {target} VOLATILITY"), use_container_width=True, config={'displayModeBar': False})
-    with c_spark2:
-        st.plotly_chart(create_sparkline(spark_df, 'Local_GPR', '#00f0ff', f"30D GPR TRACKING"), use_container_width=True, config={'displayModeBar': False})
+    # Country-Specific Text HUD 1
+    with c_hud1:
+        st.markdown(f"""
+        <div class='hud-box' style='border-color: {intel['color']}; box-shadow: inset 0 0 10px {hex_to_rgba(intel['color'], 0.1)};'>
+            <div style='color: {intel['color']}; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ LOCAL_DYNAMICS ]</div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                GPR_MOMENTUM: <span style='color: {intel['color']};'>ELEVATED</span><br>
+                SUPPLY_IMPACT: TIER_1<br>
+                MARKET_CORRELATION: HIGH
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Country-Specific Text HUD 2
+    with c_hud2:
+        st.markdown("""
+        <div class='hud-box'>
+            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ ACTIVE_THREATS ]</div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                MARITIME_CHOKEPOINT: MONITORING<br>
+                POLICY_SHIFT: PENDING<br>
+                TRADE_TARIFFS: <span style='color: #00f0ff;'>ACTIVE</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
     with c_btn1:
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
@@ -318,9 +348,13 @@ else:
         
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
+        hex_color = intel['color'].lstrip('#')
+        rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        rgba_fill = f'rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.1)'
+
         fig.add_trace(go.Scatter(
             x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Vol',
-            line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=hex_to_rgba(intel['color'], 0.1)
+            line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=rgba_fill
         ), secondary_y=False)
 
         fig.add_trace(go.Scatter(
