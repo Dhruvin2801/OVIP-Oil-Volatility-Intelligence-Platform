@@ -28,16 +28,27 @@ config.apply_custom_theme()
 
 def route_to_page(keyword):
     """
-    Dynamically scans the pages directory and routes to the exact file matching the keyword.
-    This safely bypasses OS-level emoji/unicode encoding mismatch issues on Streamlit Cloud.
+    Bulletproof Navigation: Directly queries Streamlit's internal page registry.
+    This bypasses all OS/Linux/Emoji encoding mismatches entirely.
     """
-    pages_dir = Path(__file__).parent / "pages"
-    if pages_dir.exists():
-        for file in pages_dir.glob("*.py"):
-            if keyword in file.name:
-                st.switch_page(f"pages/{file.name}")
+    from streamlit.runtime.scriptrunner import get_script_run_ctx
+    from streamlit.source_util import get_pages
+    
+    try:
+        # Get Streamlit's internal memory of registered pages
+        ctx = get_script_run_ctx()
+        pages = get_pages(ctx.main_script_path)
+        
+        # Search the registry for the keyword in the actual parsed path
+        for page_hash, page_config in pages.items():
+            if keyword in page_config["script_path"]:
+                # Feed Streamlit its EXACT internal string
+                st.switch_page(page_config["script_path"])
                 return
-    st.error(f"System Error: Could not locate module containing '{keyword}'.")
+                
+        st.error(f"Routing Error: '{keyword}' not found in Streamlit's internal registry.")
+    except Exception as e:
+        st.error(f"Navigation System Failure: {str(e)}")
 
 def initialize_session_state():
     """Ensures required variables exist before navigating to other pages"""
