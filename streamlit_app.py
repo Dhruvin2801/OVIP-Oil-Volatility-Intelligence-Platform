@@ -86,11 +86,10 @@ st.markdown("""
         backdrop-filter: blur(5px);
     }
 
-    /* AI CHAT VISIBILITY FIX */
     div[data-testid="stDialog"] > div {
         background-color: #050810 !important;
         border: 1px solid #00f0ff !important;
-        border-radius: 4px !important;
+        border-radius: 4px;
     }
     
     div[data-testid="stChatInput"] {
@@ -121,8 +120,7 @@ def load_data():
             except Exception: pass
     
     dates = pd.date_range(end=pd.Timestamp.today(), periods=150)
-    score = np.sin(np.linspace(0, 4*np.pi, 150)) + np.random.normal(0, 0.5, 150)
-    return pd.DataFrame({'Date': dates, 'WTI': np.random.normal(75, 2, 150), 'Volatility': np.random.normal(0.15, 0.02, 150), 'Crisis_Prob': np.random.uniform(0.1, 0.9, 150), 'gpr': np.random.rand(150)*100, 'Score': score})
+    return pd.DataFrame({'Date': dates, 'WTI': np.random.normal(75, 2, 150), 'Volatility': np.random.normal(0.15, 0.02, 150), 'Crisis_Prob': np.random.uniform(0.1, 0.9, 150), 'gpr': np.random.rand(150)*100, 'Score': np.random.normal(0, 1, 150)})
 
 df_main = load_data()
 
@@ -170,10 +168,10 @@ EXTRA_NODES = {
 
 for k, coords in EXTRA_NODES.items():
     if k not in COUNTRIES:
-        COUNTRIES[k] = {'lat': coords[0], 'lon': coords[1], 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Standard node tracking active. Evaluating Geopolitical Risk (GPR) and supply chain velocity.', 'figures': 'AIS Tracking Data aggregating...', 'impact': 'Monitoring macro headwinds and localized logistical constraints.'}
+        COUNTRIES[k] = {'lat': coords[0], 'lon': coords[1], 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Standard node tracking active.', 'figures': 'AIS Tracking Data aggregating...', 'impact': 'Monitoring macro headwinds and localized logistical constraints.'}
 
 # ==========================================
-# 4. THE AI TERMINAL
+# 4. THE AI MODAL (POP-UP)
 # ==========================================
 @st.dialog("DAEMON_V3 TERMINAL")
 def ai_terminal():
@@ -195,13 +193,14 @@ def ai_terminal():
 # 5. MAIN VIEW: ROUTER
 # ==========================================
 if st.session_state.target is None:
+    # --- GLOBE VIEW ---
     c_head, c_btn = st.columns([8.5, 1.5]) 
     with c_head: st.markdown("<h2 style='margin-top: 5px; font-size: 2rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
     with c_btn:
         st.write("")
         if st.button("💬 OVIP AI"): ai_terminal()
 
-    c_globe, c_stats = st.columns([7.5, 2.5]) 
+    c_globe, c_stats = st.columns([8.5, 1.5]) # RESTORED MASSIVE MAP SIZE
 
     with c_globe:
         lats = [v['lat'] for v in COUNTRIES.values()]; lons = [v['lon'] for v in COUNTRIES.values()]
@@ -224,10 +223,11 @@ if st.session_state.target is None:
             st.markdown("""<div style='background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); padding: 15px; border-radius: 4px; height: 320px; overflow-y: auto;'>
                 <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid rgba(0,240,255,0.3); padding-bottom: 5px;'>[ LIVE_MACRO_FEED ]</p>
                 <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; margin-bottom: 15px;'><span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span> <span style='color: #e2e8f0; font-weight: bold;'>US-IRAN TENSIONS</span><br><span style='color: #cbd5e1;'>Escalating rhetoric in the Strait of Hormuz embedding $2 risk premium.</span></div>
-                <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;'><span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>OPEC+ SHIFT</span><br><span style='color: #cbd5e1;'>Saudi Arabia leaning toward production increases in April 2026.</span></div></div>""", unsafe_allow_html=True)
+                <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-bottom: 15px;'><span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>OPEC+ SHIFT</span><br><span style='color: #cbd5e1;'>Saudi Arabia leaning toward production increases in April 2026.</span></div>
+                <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;'><span style='color: #00f0ff; font-family: Orbitron; font-weight: bold;'>[ UPDATE ]</span> <span style='color: #e2e8f0; font-weight: bold;'>SPR FLOOR DEFENSE</span><br><span style='color: #cbd5e1;'>US DOE actively executing refill orders at $70-$73/bbl, creating a hard physical support level for WTI.</span></div></div>""", unsafe_allow_html=True)
 
 else:
-    # --- COUNTRY DASHBOARD ---
+    # --- COUNTRY DASHBOARD VIEW ---
     target = st.session_state.target
     intel = COUNTRIES[target]
     latest = df_main.iloc[-1]
@@ -251,15 +251,15 @@ else:
         st.markdown(f"<h4 style='color:#00f0ff; margin-bottom: 15px;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
         chart_df = df_main.dropna(subset=['Date']).tail(100).copy()
         fig = make_subplots(specs=[[{"secondary_y": True}]])
-        rgba_fill = f'rgba({int(intel["color"].lstrip("#")[0:2], 16)}, {int(intel["color"].lstrip("#")[2:4], 16)}, {int(intel["color"].lstrip("#")[4:6], 16)}, 0.1)'
+        rgba_fill = hex_to_rgba(intel['color'], 0.1)
         fig.add_trace(go.Scatter(x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Vol', line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=rgba_fill), secondary_y=False)
         fig.add_trace(go.Scatter(x=chart_df['Date'], y=chart_df['WTI'], name='Global WTI ($)', line=dict(color="#475569", width=2, dash='dot')), secondary_y=True)
         fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0")))
         fig.update_xaxes(showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', tickfont=dict(color="#94a3b8"))
         fig.update_yaxes(title_text="Volatility", color=intel['color'], showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', secondary_y=False)
-        fig.update_yaxes(title_text="WTI Index ($)", color="#475569", showgrid=False, secondary_y=True)
+        fig.update_yaxes(title_text="WTI ($)", color="#475569", showgrid=False, secondary_y=True)
         st.plotly_chart(fig, use_container_width=True)
-        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px; margin-bottom: 25px;'>> MATRIX_INTERPRETATION: The solid {intel['color']} wave tracks localized 30-day volatility standard deviation for {target}. Rapid expansion indicates physical supply chain dislocation. The dotted line tracks global WTI baseline.</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px; margin-bottom: 25px;'>> MATRIX_INTERPRETATION: The solid {intel['color']} wave tracks localized 30-day volatility standard deviation for {target}. Rapid expansion indicates physical supply chain dislocation. The dotted line tracks global WTI pricing.</p>", unsafe_allow_html=True)
         st.plotly_chart(create_feature_importance_chart(intel['color']), use_container_width=True, config={'displayModeBar': False})
         st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px;'>> DRIVER_ANALYSIS: Random Forest extraction identifies GPR and Momentum as primary weights currently overriding physical supply constraints for {target}.</p>", unsafe_allow_html=True)
     with col_right:
