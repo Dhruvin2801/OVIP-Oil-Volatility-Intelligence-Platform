@@ -28,14 +28,14 @@ st.markdown("""
         height: 100vh !important;
     }
     
-    /* ELIMINATE TOP PADDING COMPLETELY */
+    /* SAFE PADDING: Prevents the title from getting cut off */
     .block-container {
-        padding-top: 0rem !important; 
+        padding-top: 1rem !important; 
         padding-bottom: 0rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
         max-width: 100% !important;
-        margin-top: -65px !important; /* Pulls UI up to the absolute top edge */
+        margin-top: -40px !important; 
     }
     header {visibility: hidden;}
 
@@ -69,22 +69,11 @@ st.markdown("""
         margin-bottom: 0 !important;
     }
 
-    /* CUSTOM FLEXBOX HEADER TO KILL EMPTY COLUMNS */
-    .flex-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center; /* Aligns text and button perfectly */
-        padding-top: 25px;
-        margin-bottom: 5px;
-        border-bottom: 1px solid rgba(0, 240, 255, 0.3);
-        padding-bottom: 10px;
-    }
-
-    /* ALL METRICS CHANGED TO NEON BLUE */
+    /* NEON BLUE METRICS */
     [data-testid="stMetricValue"] {
         font-family: 'JetBrains Mono', monospace !important;
         font-weight: 700 !important;
-        color: #00f0ff !important; /* Changed from green to blue */
+        color: #00f0ff !important; 
         text-shadow: 0 0 5px rgba(0, 240, 255, 0.3);
     }
     
@@ -109,22 +98,10 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
 </style>
-
-<script>
-    const actx = new (window.AudioContext || window.webkitAudioContext)();
-    document.addEventListener('click', () => {
-        if (actx.state === 'suspended') actx.resume();
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type = 'square'; o.frequency.setValueAtTime(900, actx.currentTime); 
-        g.gain.setValueAtTime(0.015, actx.currentTime); 
-        o.connect(g); g.connect(actx.destination);
-        o.start(); o.stop(actx.currentTime + 0.04); 
-    });
-</script>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. DATA PIPELINE
+# 2. DATA PIPELINE & HELPERS
 # ==========================================
 @st.cache_data
 def load_data():
@@ -148,13 +125,33 @@ if 'rag_setup' not in st.session_state:
         except: st.session_state.vec = None
     st.session_state.rag_setup = True
 
+def hex_to_rgba(hex_code, alpha=0.1):
+    hex_code = hex_code.lstrip('#')
+    if len(hex_code) == 6:
+        return f'rgba({int(hex_code[0:2], 16)},{int(hex_code[2:4], 16)},{int(hex_code[4:6], 16)},{alpha})'
+    return f'rgba(0,240,255,{alpha})'
+
+# Generates HUD Mini-Graphs
+def create_sparkline(data, column, color, title):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=data['Date'], y=data[column], mode='lines',
+        line=dict(color=color, width=2, shape='spline'), fill='tozeroy', fillcolor=hex_to_rgba(color, 0.15)
+    ))
+    fig.update_layout(
+        height=60, margin=dict(l=0, r=0, t=20, b=0),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False,
+        xaxis=dict(visible=False, fixedrange=True), yaxis=dict(visible=False, fixedrange=True),
+        title=dict(text=title, font=dict(color="#94a3b8", size=10, family="JetBrains Mono"), y=0.95, x=0.0)
+    )
+    return fig
+
 # ==========================================
 # 3. GLOBAL NODE DATABASE
 # ==========================================
 if 'target' not in st.session_state: st.session_state.target = None
 
-# Base Sci-Fi Colors
-C_SAFE = '#00f0ff' # Changed low risk from green to blue
+C_SAFE = '#00f0ff' # Safe is now Blue
 C_WARN = '#ffd700'
 C_DANG = '#ff003c'
 
@@ -221,16 +218,25 @@ def ai_terminal():
 # 5. MAIN VIEW: GLOBE OR DASHBOARD
 # ==========================================
 if st.session_state.target is None:
-    # --- GLOBE VIEW (Flex Header to kill empty space) ---
-    c_head, c_btn = st.columns([8.5, 1.5]) # Tight columns to prevent empty box rendering
+    # --- GLOBE VIEW WITH HUD SPARKLINES ---
+    c_head, c_spark1, c_spark2, c_btn = st.columns([3.5, 2.5, 2.5, 1.5]) 
     
     with c_head:
-        st.markdown("<h2 style='margin-top: 15px;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 14px; margin-top: -5px;'>> AWAITING TARGET SELECTION...</p>", unsafe_allow_html=True)
+        st.markdown("<h2 style='margin-top: 0px; font-size: 1.8rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 12px; margin-top: -5px;'>> AWAITING_TARGET...</p>", unsafe_allow_html=True)
+    
+    # Generate the HUD mini-graphs
+    spark_df = df_main.dropna(subset=['Date']).tail(30)
+    with c_spark1:
+        st.plotly_chart(create_sparkline(spark_df, 'Volatility', '#00f0ff', "30D GLOBAL VOLATILITY"), use_container_width=True, config={'displayModeBar': False})
+    with c_spark2:
+        st.plotly_chart(create_sparkline(spark_df, 'WTI', '#00f0ff', "30D WTI INDEX"), use_container_width=True, config={'displayModeBar': False})
+        
     with c_btn:
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         if st.button("💬 OVIP AI"): ai_terminal()
     
+    # Globe Plot
     lats = [v['lat'] for v in COUNTRIES.values()]
     lons = [v['lon'] for v in COUNTRIES.values()]
     names = list(COUNTRIES.keys())
@@ -244,17 +250,13 @@ if st.session_state.target is None:
     ))
     
     fig_globe.update_geos(
-        projection_type="orthographic", 
-        showcoastlines=True, coastlinecolor="#1e3a8a", 
-        showland=True, landcolor="#0f172a",           
-        showocean=True, oceancolor="#020617",         
-        showcountries=True, countrycolor="#1e293b", 
-        bgcolor="rgba(0,0,0,0)",
+        projection_type="orthographic", showcoastlines=True, coastlinecolor="#1e3a8a", 
+        showland=True, landcolor="#0f172a", showocean=True, oceancolor="#020617",         
+        showcountries=True, countrycolor="#1e293b", bgcolor="rgba(0,0,0,0)",
         center=dict(lon=78.96, lat=20.59), projection_rotation=dict(lon=78.96, lat=20.59, roll=0)
     )
     
-    # Negative top margin pulls the globe up
-    fig_globe.update_layout(height=700, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig_globe.update_layout(height=650, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     
     event = st.plotly_chart(fig_globe, on_select="rerun", selection_mode="points", use_container_width=True)
     if event and "selection" in event and event["selection"]["points"]:
@@ -262,19 +264,28 @@ if st.session_state.target is None:
         st.rerun()
 
 else:
-    # --- COUNTRY DASHBOARD VIEW ---
+    # --- COUNTRY DASHBOARD VIEW WITH HUD SPARKLINES ---
     target = st.session_state.target
     intel = COUNTRIES[target]
     latest = df_main.iloc[-1]
     mod = intel['mod']
     
-    # Flex Header
-    c_head, c_btn1, c_btn2 = st.columns([7, 1.5, 1.5])
+    # Header with HUD
+    c_head, c_spark1, c_spark2, c_btn1, c_btn2 = st.columns([3.5, 2.5, 2.5, 1.2, 1.2])
     
     with c_head:
-        st.markdown(f"<h2 style='color:{intel['color']}; margin-top: 15px;'>NODE::{target}</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 14px; margin-top: -5px;'>> UPLINK_ESTABLISHED</p>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{intel['color']}; margin-top: 0px; font-size: 1.8rem;'>NODE::{target}</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 12px; margin-top: -5px;'>> UPLINK_ESTABLISHED</p>", unsafe_allow_html=True)
     
+    spark_df = df_main.dropna(subset=['Date']).tail(30).copy()
+    spark_df['Local_Vol'] = spark_df['Volatility'] * mod
+    spark_df['Local_GPR'] = spark_df['gpr'] * mod
+    
+    with c_spark1:
+        st.plotly_chart(create_sparkline(spark_df, 'Local_Vol', intel['color'], f"30D {target} VOLATILITY"), use_container_width=True, config={'displayModeBar': False})
+    with c_spark2:
+        st.plotly_chart(create_sparkline(spark_df, 'Local_GPR', '#00f0ff', f"30D GPR TRACKING"), use_container_width=True, config={'displayModeBar': False})
+        
     with c_btn1:
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         if st.button("← GLOBE"): st.session_state.target = None; st.rerun()
@@ -307,13 +318,9 @@ else:
         
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-        hex_color = intel['color'].lstrip('#')
-        rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        rgba_fill = f'rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.1)'
-
         fig.add_trace(go.Scatter(
             x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Vol',
-            line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=rgba_fill
+            line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=hex_to_rgba(intel['color'], 0.1)
         ), secondary_y=False)
 
         fig.add_trace(go.Scatter(
@@ -323,7 +330,7 @@ else:
 
         fig.update_layout(
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            height=350, margin=dict(l=0, r=0, t=10, b=0),
+            height=340, margin=dict(l=0, r=0, t=10, b=0),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0"))
         )
         fig.update_xaxes(showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', tickfont=dict(color="#94a3b8"))
@@ -334,8 +341,8 @@ else:
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_intel:
-        st.markdown("<div class='animated-panel' style='height: 440px;'>", unsafe_allow_html=True)
-        st.markdown(f"<h4 style='color:#00f0ff;'>REGIONAL_INTEL</h4>", unsafe_allow_html=True)
+        st.markdown("<div class='animated-panel' style='height: 440px; overflow-y: auto;'>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#00f0ff; border-bottom: 1px solid rgba(0, 240, 255, 0.3); padding-bottom: 10px;'>REGIONAL_INTELLIGENCE</h4>", unsafe_allow_html=True)
         
         st.markdown(f"""
         <div style='margin-top: 15px;'>
