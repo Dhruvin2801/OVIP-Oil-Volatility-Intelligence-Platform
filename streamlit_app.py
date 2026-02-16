@@ -78,17 +78,21 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
 
-    /* =======================================
-       AI MODAL (DIALOG) THEME & VISIBILITY 
-       ======================================= */
+    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
+        background: rgba(10, 15, 30, 0.6);
+        border: 1px solid rgba(0, 240, 255, 0.2);
+        border-radius: 4px;
+        padding: 20px;
+        backdrop-filter: blur(5px);
+    }
+
+    /* AI CHAT VISIBILITY FIX */
     div[data-testid="stDialog"] > div {
         background-color: #050810 !important;
         border: 1px solid #00f0ff !important;
         border-radius: 4px !important;
-        box-shadow: 0 0 30px rgba(0, 240, 255, 0.2) !important;
     }
     
-    /* Input Text Visibility Fix */
     div[data-testid="stChatInput"] {
         background-color: #0a0f1e !important;
         border: 1px solid rgba(0, 240, 255, 0.6) !important;
@@ -96,15 +100,7 @@ st.markdown("""
     
     div[data-testid="stChatInput"] textarea {
         color: #00f0ff !important;
-        font-family: 'JetBrains Mono', monospace !important;
         -webkit-text-fill-color: #00f0ff !important;
-        caret-color: #00f0ff !important;
-    }
-
-    /* Chat Message Bubble Text Visibility */
-    [data-testid="stChatMessage"] {
-        background-color: rgba(0, 240, 255, 0.03) !important;
-        border: 1px solid rgba(0, 240, 255, 0.1) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -148,40 +144,36 @@ def create_feature_importance_chart(color):
     return fig
 
 # ==========================================
-# 3. GLOBAL NODE DATABASE (10 NEW ADDED)
+# 3. GLOBAL NODE DATABASE
 # ==========================================
 if 'target' not in st.session_state: st.session_state.target = None
 
-C_SAFE = '#00f0ff' 
-C_WARN = '#ffd700'
-C_DANG = '#ff003c'
+C_SAFE, C_WARN, C_DANG = '#00f0ff', '#ffd700', '#ff003c'
 
 COUNTRIES = {
-    'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 'info': '3rd largest global oil importer. Hyper-sensitive to Brent/Dubai spreads.', 'figures': 'Refinery Run Rate: 102% | Strategic Reserve Expansion: +6.5M tons.', 'impact': 'Russian crude discounts shrinking to $3.50/bbl. Fiscal pressure rising.'},
-    'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Top global producer & primary swing supplier. Highly financialized market.', 'figures': 'Permian Output: 6.1M bpd | Inventories: -2.4M bbl.', 'impact': 'SPR refill active at $73/bbl floor. Tariffs re-routing heavy crude inputs.'},
-    'CHINA': {'lat': 35.86, 'lon': 104.20, 'risk': 'HIGH', 'color': C_DANG, 'mod': 1.1, 'info': 'Largest global crude importer. Demand dictated by Teapot refinery quotas.', 'figures': 'Independent Utilization: 58% | LNG Imports: +14% YoY.', 'impact': 'Manufacturing demand slowing. Malacca Strait chokepoint risk remains critical.'},
-    'RUSSIA': {'lat': 61.52, 'lon': 105.31, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.25, 'info': 'Sanctioned major exporter using dark fleet networks to evade G7 caps.', 'figures': 'Seaborne Exports: 3.3M bpd | Brent Spread: -$14/bbl.', 'impact': 'Sanctions blocking infrastructure CapEx. Payment settlement delays increasing float times.'},
-    'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'OPEC+ leader. Sole entity capable of acting as primary market shock absorber.', 'figures': 'Offline Spare Capacity: ~3.2M bpd | Fiscal Break-even: $82/bbl.', 'impact': 'Leaning toward ending cuts in April 2026 to reclaim Asian market share.'},
-    'UAE': {'lat': 23.42, 'lon': 53.85, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.98, 'info': 'Global logistics hub. Fujairah port serves as leading indicator for export health.', 'figures': 'Fujairah Bunkering: 14-month high | Capacity Goal: 5M bpd by 2027.', 'impact': 'Capitalizing on Red Sea rerouting. Investing heavily in production expansion.'},
-    'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.3, 'info': 'Controls Strait of Hormuz (21M bpd risk). Evading sanctions via dark fleet.', 'figures': 'Covert Production: 3.1M bpd | Asian Export Share: >90%.', 'impact': 'Transit harassment embedding $3 geopolitical risk premium into benchmarks.'},
-    # 4 NEW ASIA NODES
-    'SINGAPORE': {'lat': 1.35, 'lon': 103.82, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 'info': 'Premier global pricing hub. Critical for maritime bunkering and refining.', 'figures': 'Onshore inventories near multi-year lows.', 'impact': 'Monitoring South China Sea transit security and refining margins.'},
-    'SOUTH KOREA': {'lat': 35.91, 'lon': 127.77, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 'info': 'Top-tier refining hub dependent on Middle Eastern sour crude.', 'figures': 'Strategic reserves at 90-day coverage.', 'impact': 'Industrial slowdown affecting middle-distillate export demand.'},
-    'VIETNAM': {'lat': 14.05, 'lon': 108.27, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Emerging regional refining power. Expanding offshore exploration.', 'figures': 'Nghi Son refinery at full capacity.', 'impact': 'Maritime border disputes affecting long-term CapEx.'},
-    'KAZAKHSTAN': {'lat': 48.01, 'lon': 66.92, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Major producer via CPC pipeline. Prone to Russian transit disruptions.', 'figures': 'Tengiz field expansion delayed to 2027.', 'impact': 'CPC terminal weather shutdowns creating short-term supply gaps.'},
-    # 2 NEW AFRICA NODES
-    'NIGERIA': {'lat': 9.08, 'lon': 8.68, 'risk': 'HIGH', 'color': C_DANG, 'mod': 1.2, 'info': 'Key light sweet crude exporter. Production prone to sabotage.', 'figures': 'Output struggling to meet 1.5M bpd quota.', 'impact': 'Dangote refinery ramp-up shifting national export/import balance.'},
-    'ANGOLA': {'lat': -11.20, 'lon': 17.87, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.05, 'info': 'Exited OPEC. Deepwater production seeing natural decline.', 'figures': 'Production averaging 1.1M bpd.', 'impact': 'Fiscal dependence on crude creating budget volatility at <$75 Brent.'},
-    # 2 NEW EU NODES
-    'NORWAY': {'lat': 60.47, 'lon': 8.47, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.9, 'info': 'Reliable European supplier. Johan Sverdrup field providing baseload.', 'figures': 'Exports to EU at historic highs.', 'impact': 'Strategic shift to gas production limiting incremental oil growth.'},
-    'GERMANY': {'lat': 51.17, 'lon': 10.45, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Major industrial consumer. Shifting away from Russian Urals.', 'figures': 'Refinery utilization at 82%.', 'impact': 'Macro industrial slowdown reducing diesel demand significantly.'},
-    # 2 EXTRA FOR COVERAGE
-    'BRAZIL': {'lat': -14.24, 'lon': -51.93, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.9, 'info': 'Non-OPEC growth driver. Massive pre-salt offshore reserves.', 'figures': 'Output hitting 3.5M bpd record.', 'impact': 'Increasing competition with West African grades in Asian markets.'},
-    'OMAN': {'lat': 21.51, 'lon': 55.92, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 'info': 'Benchmark crude origin (Dubai/Oman). Strategic non-OPEC Middle East node.', 'figures': 'Production stable at 1M bpd.', 'impact': 'Strait of Hormuz bypass pipeline increasing strategic value.'}
+    'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 'info': '3rd largest global oil importer. Hyper-sensitive to Brent/Dubai spreads. Local refinery run rates are currently maximizing at 102% utilization.', 'figures': 'Refinery Run Rate: 102% | Strategic Reserve Expansion: +6.5M tons.', 'impact': 'Russian crude discounts shrinking to $3.50/bbl. Fiscal pressure rising for state-run refiners.'},
+    'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Top global producer & primary swing supplier. Permian basin output steady at 6.1M bpd.', 'figures': 'Permian Output: 6.1M bpd | Inventories: -2.4M bbl WoW.', 'impact': 'SPR refill active at $73/bbl floor. New import tariffs re-routing heavy crude flows.'},
+    'CHINA': {'lat': 35.86, 'lon': 104.20, 'risk': 'HIGH', 'color': C_DANG, 'mod': 1.1, 'info': 'Largest global crude importer. Demand dictated by independent Teapot refinery export quotas.', 'figures': 'Independent Utilization: 58% | LNG Imports: +14% YoY.', 'impact': 'Manufacturing export demand slowing. Malacca Strait chokepoint risk remains a critical concern.'},
+    'RUSSIA': {'lat': 61.52, 'lon': 105.31, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.25, 'info': 'Sanctioned major exporter using dark fleet networks. Urals trading at steep $14 discount to Brent.', 'figures': 'Seaborne Exports: 3.3M bpd | Dark Fleet Capacity: 600+ vessels.', 'impact': 'Sanctions blocking infrastructure CapEx. Payment delays with Asian buyers increasing cargo float times.'},
+    'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'OPEC+ leader. Sole entity acting as primary market shock absorber by withholding spare capacity.', 'figures': 'Offline Spare Capacity: ~3.2M bpd | Fiscal Break-even: $82/bbl.', 'impact': 'Leaning toward ending cuts in April 2026 to reclaim Asian market share ahead of summer.'},
+    'UAE': {'lat': 23.42, 'lon': 53.85, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.98, 'info': 'Global logistics hub. Fujairah port serves as leading indicator for Middle East export health.', 'figures': 'Fujairah Bunkering: 14-month high | Capacity Goal: 5M bpd by 2027.', 'impact': 'Capitalizing on Red Sea rerouting. Investing heavily in incremental production expansion.'},
+    'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.3, 'info': 'Controls Strait of Hormuz (21M bpd transit risk). Production covertly recovered to 3.1M bpd.', 'figures': 'Asian Export Share: >90% | Covert Output: 3.1M bpd.', 'impact': 'Transit harassment incidents embedding $3 risk premium directly into global benchmarks.'}
 }
 
+EXTRA_NODES = {
+    'SINGAPORE': [1.35, 103.82], 'SOUTH KOREA': [35.91, 127.77], 'VIETNAM': [14.05, 108.27],
+    'KAZAKHSTAN': [48.01, 66.92], 'NIGERIA': [9.08, 8.68], 'ANGOLA': [-11.20, 17.87],
+    'NORWAY': [60.47, 8.47], 'GERMANY': [51.17, 10.45], 'BRAZIL': [-14.24, -51.93],
+    'OMAN': [21.51, 55.92], 'ITALY': [41.87, 12.56], 'JAPAN': [36.20, 138.25],
+    'CANADA': [56.13, -106.34], 'EGYPT': [26.82, 30.80]
+}
+
+for k, coords in EXTRA_NODES.items():
+    if k not in COUNTRIES:
+        COUNTRIES[k] = {'lat': coords[0], 'lon': coords[1], 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Standard node tracking active. Evaluating Geopolitical Risk (GPR) and supply chain velocity.', 'figures': 'AIS Tracking Data aggregating...', 'impact': 'Monitoring macro headwinds and localized logistical constraints.'}
+
 # ==========================================
-# 4. THE AI MODAL (POP-UP)
+# 4. THE AI TERMINAL
 # ==========================================
 @st.dialog("DAEMON_V3 TERMINAL")
 def ai_terminal():
@@ -203,14 +195,13 @@ def ai_terminal():
 # 5. MAIN VIEW: ROUTER
 # ==========================================
 if st.session_state.target is None:
-    # --- GLOBE VIEW ---
     c_head, c_btn = st.columns([8.5, 1.5]) 
     with c_head: st.markdown("<h2 style='margin-top: 5px; font-size: 2rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
     with c_btn:
         st.write("")
         if st.button("💬 OVIP AI"): ai_terminal()
 
-    c_globe, c_stats = st.columns([7.5, 2.5]) # RESTORED MASSIVE GLOBE
+    c_globe, c_stats = st.columns([7.5, 2.5]) 
 
     with c_globe:
         lats = [v['lat'] for v in COUNTRIES.values()]; lons = [v['lon'] for v in COUNTRIES.values()]
@@ -236,7 +227,7 @@ if st.session_state.target is None:
                 <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;'><span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>OPEC+ SHIFT</span><br><span style='color: #cbd5e1;'>Saudi Arabia leaning toward production increases in April 2026.</span></div></div>""", unsafe_allow_html=True)
 
 else:
-    # --- COUNTRY DASHBOARD VIEW (UNCHANGED FORMAT) ---
+    # --- COUNTRY DASHBOARD ---
     target = st.session_state.target
     intel = COUNTRIES[target]
     latest = df_main.iloc[-1]
@@ -257,7 +248,7 @@ else:
     st.markdown("---")
     col_left, col_right = st.columns([2.5, 1.5])
     with col_left:
-        st.markdown(f"<h4 style='color:#00f0ff; margin-bottom: 5px;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#00f0ff; margin-bottom: 15px;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
         chart_df = df_main.dropna(subset=['Date']).tail(100).copy()
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         rgba_fill = f'rgba({int(intel["color"].lstrip("#")[0:2], 16)}, {int(intel["color"].lstrip("#")[2:4], 16)}, {int(intel["color"].lstrip("#")[4:6], 16)}, 0.1)'
@@ -268,12 +259,19 @@ else:
         fig.update_yaxes(title_text="Volatility", color=intel['color'], showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', secondary_y=False)
         fig.update_yaxes(title_text="WTI Index ($)", color="#475569", showgrid=False, secondary_y=True)
         st.plotly_chart(fig, use_container_width=True)
-        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px; margin-bottom: 25px;'>> MATRIX_INTERPRETATION: The solid {intel['color']} wave tracks the localized 30-day volatility standard deviation for {target}. Rapid expansion indicates physical supply chain dislocation. The dotted line tracks global WTI pricing.</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px; margin-bottom: 25px;'>> MATRIX_INTERPRETATION: The solid {intel['color']} wave tracks localized 30-day volatility standard deviation for {target}. Rapid expansion indicates physical supply chain dislocation. The dotted line tracks global WTI baseline.</p>", unsafe_allow_html=True)
         st.plotly_chart(create_feature_importance_chart(intel['color']), use_container_width=True, config={'displayModeBar': False})
-        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px;'>> DRIVER_ANALYSIS: Random Forest extraction identifies GPR and Momentum as the primary weights currently overriding physical supply constraints in the {target} node.</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px;'>> DRIVER_ANALYSIS: Random Forest extraction identifies GPR and Momentum as primary weights currently overriding physical supply constraints for {target}.</p>", unsafe_allow_html=True)
     with col_right:
         with st.container():
-            st.markdown(f"<div style='margin-bottom: 25px;'><p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ LOCAL_DYNAMICS ]</p><p style='font-family: JetBrains Mono; font-size: 13px; color: #cbd5e1; line-height: 1.6; padding-left: 12px; border-left: 2px solid #00f0ff;'>{intel['info']}</p></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='margin-bottom: 25px;'><p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ MARKET_DATA ]</p><p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'><span style='color: #00f0ff;'>&gt;</span> {intel['figures']}</p></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='margin-bottom: 25px;'><p style='color: {intel['color']}; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px; text-shadow: 0 0 8px {hex_to_rgba(intel['color'], 0.4)};'>[ EVENT_IMPACT_ANALYSIS ]</p><p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'><span style='color: {intel['color']};'>&gt;</span> {intel['impact']}</p></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div><p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ SYSTEM_FORECAST ]</p><ul style='font-family: \"JetBrains Mono\"; font-size: 13px; line-height: 2.0; color: #94a3b8; list-style-type: none; padding-left: 0;'><li><span style='color: #00f0ff;'>[ GPR_TRACKING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{(latest.get('gpr', 50)*mod):.1f}</span></li><li><span style='color: {intel[\"color\"]};'>[ FORECAST ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'Escalate' if intel['risk'] in ['HIGH', 'CRITICAL'] else ('Maintain' if intel['risk'] == 'MEDIUM' else 'Stabilize')}</span></li><li><span style='color: #00f0ff;'>[ CORRELATION ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'High' if intel['risk'] in ['MEDIUM', 'HIGH'] else 'Moderate'}</span></li></ul>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style='margin-bottom: 25px;'><p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ LOCAL_DYNAMICS ]</p><p style='font-family: JetBrains Mono; font-size: 13px; color: #cbd5e1; line-height: 1.6; padding-left: 12px; border-left: 2px solid #00f0ff;'>{intel['info']}</p></div>
+            <div style='margin-bottom: 25px;'><p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ MARKET_DATA ]</p><p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'><span style='color: #00f0ff;'>&gt;</span> {intel['figures']}</p></div>
+            <div style='margin-bottom: 25px;'><p style='color: {intel['color']}; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px; text-shadow: 0 0 8px {hex_to_rgba(intel['color'], 0.4)};'>[ EVENT_IMPACT_ANALYSIS ]</p><p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'><span style='color: {intel['color']};'>&gt;</span> {intel['impact']}</p></div>
+            <div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div><p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ SYSTEM_FORECAST ]</p>
+            <ul style='font-family: "JetBrains Mono"; font-size: 13px; line-height: 2.0; color: #94a3b8; list-style-type: none; padding-left: 0;'>
+            <li><span style='color: #00f0ff;'>[ GPR_TRACKING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{(latest.get('gpr', 50)*mod):.1f}</span></li>
+            <li><span style='color: {intel['color']};'>[ FORECAST ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'Escalate' if intel['risk'] in ['HIGH', 'CRITICAL'] else ('Maintain' if intel['risk'] == 'MEDIUM' else 'Stabilize')}</span></li>
+            <li><span style='color: #00f0ff;'>[ CORRELATION ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'High' if intel['risk'] in ['MEDIUM', 'HIGH'] else 'Moderate'}</span></li>
+            </ul>
+            """, unsafe_allow_html=True)
