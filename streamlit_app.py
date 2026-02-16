@@ -16,7 +16,7 @@ except ImportError:
 # ==========================================
 st.set_page_config(page_title="OVIP // Command Center", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS for styling colors, fonts, and containers.
+# CSS for styling colors, fonts, and containers, NOT layout structure.
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
@@ -79,48 +79,13 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
     
-    /* Native container styling for "panels" */
+    /* Native container styling for "panels" to avoid layout bugs */
     [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
         background: rgba(10, 15, 30, 0.6);
         border: 1px solid rgba(0, 240, 255, 0.2);
         border-radius: 4px;
         padding: 20px;
         backdrop-filter: blur(5px);
-    }
-    
-    /* Scrollbar styling */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.6); }
-
-    /* =======================================
-       AI MODAL (DIALOG) CUSTOM THEME FIXES 
-       ======================================= */
-    div[data-testid="stDialog"] > div {
-        background-color: #050810 !important;
-        border: 1px solid #00f0ff !important;
-        border-radius: 4px !important;
-        box-shadow: 0 0 30px rgba(0, 240, 255, 0.15) !important;
-    }
-    
-    div[data-testid="stDialog"] h2 {
-        color: #00f0ff !important;
-        font-family: 'Orbitron', sans-serif !important;
-        border-bottom: 1px solid rgba(0, 240, 255, 0.3);
-        padding-bottom: 10px;
-    }
-    
-    /* Ensure chat input text is visible */
-    div[data-testid="stChatInput"] {
-        background-color: #0a0f1e !important;
-        border: 1px solid rgba(0, 240, 255, 0.5) !important;
-    }
-    
-    div[data-testid="stChatInput"] textarea {
-        color: #00f0ff !important;
-        font-family: 'JetBrains Mono', monospace !important;
-        -webkit-text-fill-color: #00f0ff !important; /* Forces text to be visible */
     }
 </style>
 """, unsafe_allow_html=True)
@@ -157,8 +122,9 @@ def hex_to_rgba(hex_code, alpha=0.1):
     return f'rgba({int(hex_code[0:2], 16)},{int(hex_code[2:4], 16)},{int(hex_code[4:6], 16)},{alpha})'
 
 def create_feature_importance_chart(color):
+    # Simulated Feature Importance Data
     factors = ['Geo-Risk (GPR)', 'WTI Momentum', 'NLP Sentiment', 'OPEC+ Supply', 'Freight Cost']
-    importance = [0.38, 0.25, 0.20, 0.12, 0.05]
+    importance = [0.35, 0.25, 0.20, 0.12, 0.08]
     
     fig = go.Figure(go.Bar(
         x=importance, y=factors, orientation='h',
@@ -185,7 +151,7 @@ C_DANG = '#ff003c'
 COUNTRIES = {
     'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 
               'info': 'India remains the third-largest global oil importer, making its economy structurally hypersensitive to any physical supply shocks or Brent/Dubai pricing spreads. Local refinery run rates are currently maximizing at 102% utilization to meet rapidly rising domestic industrial and infrastructure demand.', 
-              'figures': 'Refinery Run Rate: 102% | Seaborne Import Reliance: >85% | Strategic Petroleum Reserve (SPR) capacity actively expanding by 6.5M tons.', 
+              'figures': 'Refinery Run Rate: 102% | Seaborne Import Reliance: >85% | Strategic Petroleum Reserve (SPR) capacity actively expanding by 6.5M tons (approx. 47.5M barrels).', 
               'impact': 'The structural discount on Russian Ural crude imports has violently shrunk from its peak of $10/bbl down to just $3.50/bbl due to tightening Western financial sanctions and dark fleet logistics bottlenecks. This is rapidly increasing fiscal pressure on state-run refiners, forcing them to negotiate new long-term baseload contracts with Middle Eastern suppliers to secure forward pricing.'},
               
     'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 
@@ -226,45 +192,28 @@ COUNTRIES = {
     'UK': {'lat': 55.37, 'lon': -3.43, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.02, 
            'info': 'The historical origin of the Brent global pricing benchmark. North Sea production is currently in a state of severe, terminal natural decline, dropping at an alarming rate.', 
            'figures': 'North Sea Decline Rate: Accelerating to 8% YoY | Active Offshore Rigs: Near historic lows.', 
-           'impact': 'The aggressive implementation of localized windfall taxes on energy producers by the government is severely restricting new drilling CapEx and offshore exploration. This permanent policy shift is irreversibly eroding domestic production capabilities, forcing the broader European market to rely heavily on US shale and Middle Eastern imports for baseload supply.'}
+           'impact': 'The aggressive implementation of localized windfall taxes on energy producers by the government is severely restricting new drilling CapEx and offshore exploration. This permanent policy shift is irreversibly eroding domestic production capabilities, forcing the broader European market to rely heavily on US shale and Middle Eastern imports for baseload supply.'},
+           
+    'OMAN': {'lat': 21.51, 'lon': 55.92, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 'info': 'Key benchmark component (Dubai/Oman). Non-OPEC Middle East producer.', 'figures': 'Crude blending operations expanding.', 'impact': 'Strategic bypass of Strait of Hormuz constraints.'}
 }
 
-# The Expanded Map Nodes Data (Adds ~30 extra dots to the map)
-EXTRA_NODES = {
-    'BRAZIL': [-14.23, -51.92], 'NORWAY': [60.47, 8.46], 'NIGERIA': [9.08, 8.67],
-    'ANGOLA': [-11.20, 17.87], 'LIBYA': [26.33, 17.22], 'IRAQ': [33.22, 43.67],
-    'KUWAIT': [29.31, 47.48], 'QATAR': [25.35, 51.18], 'CANADA': [56.13, -106.34],
-    'MEXICO': [23.63, -102.55], 'GERMANY': [51.16, 10.45], 'JAPAN': [36.20, 138.25],
-    'SOUTH KOREA': [35.90, 127.76], 'AUSTRALIA': [-25.27, 133.77], 'ALGERIA': [28.03, 1.65],
-    'EGYPT': [26.82, 30.80], 'TURKEY': [38.96, 35.24], 'SOUTH AFRICA': [-30.55, 22.93],
-    'SINGAPORE': [1.35, 103.81], 'INDONESIA': [-0.78, 113.92], 'OMAN': [21.51, 55.92],
-    'FRANCE': [46.22, 2.21], 'ITALY': [41.87, 12.56], 'SPAIN': [40.46, -3.74],
-    'ARGENTINA': [-38.41, -63.61], 'KAZAKHSTAN': [48.01, 66.92], 'COLOMBIA': [4.57, -74.29],
-    'VIETNAM': [14.05, 108.27], 'MALAYSIA': [4.21, 101.97], 'GUYANA': [4.86, -58.93]
-}
-
-for k, coords in EXTRA_NODES.items():
+for k in ['BRAZIL', 'NORWAY', 'NIGERIA', 'ANGOLA', 'LIBYA', 'IRAQ', 'KUWAIT', 'QATAR', 'CANADA', 'MEXICO', 'GERMANY', 'JAPAN', 'SOUTH KOREA', 'AUSTRALIA', 'ALGERIA', 'EGYPT', 'TURKEY', 'SOUTH AFRICA', 'SINGAPORE', 'INDONESIA']:
     if k not in COUNTRIES:
-        COUNTRIES[k] = {
-            'lat': coords[0], 'lon': coords[1], 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 
-            'info': 'Standard node tracking active. The AI engine is actively evaluating regional Geopolitical Risk (GPR) metrics and baseline production capacity.', 
-            'figures': 'Data aggregating from primary satellite, AIS tracking, and manifest sources...', 
-            'impact': 'Currently monitoring overarching global macro headwinds, structural demand destruction vectors, and localized supply chain constraints.'
-        }
+        COUNTRIES[k] = {'lat': 0, 'lon': 0, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Standard node tracking active. The AI engine is evaluating regional Geopolitical Risk (GPR) metrics and baseline production capacity.', 'figures': 'Data aggregating from primary satellite and manifest sources...', 'impact': 'Currently monitoring overarching global macro headwinds, structural demand destruction vectors, and localized supply chain constraints.'}
 
 # ==========================================
 # 4. THE AI MODAL (POP-UP)
 # ==========================================
-@st.dialog("DAEMON_V3 TERMINAL")
+@st.dialog("OVIP AI Terminal")
 def ai_terminal():
-    st.markdown("<p style='color: #00ff41; font-family: JetBrains Mono; font-size: 0.8em;'>> SECURE UPLINK ESTABLISHED. INITIALIZING AI KERNEL...</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; font-family: JetBrains Mono; font-size: 0.8em;'>> SECURE UPLINK ESTABLISHED.</p>", unsafe_allow_html=True)
     if "chat_log" not in st.session_state:
         st.session_state.chat_log = [{"role": "assistant", "content": "SYSTEM ONLINE. AWAITING QUERY."}]
 
     chat_box = st.container(height=300, border=False)
     with chat_box:
         for msg in st.session_state.chat_log:
-            c = "#00f0ff" if msg['role'] == 'user' else "#00ff41"
+            c = "#00f0ff" if msg['role'] == 'user' else "#e2e8f0"
             n = "USER" if msg['role'] == 'user' else "DAEMON"
             st.markdown(f"<span style='color:{c}; font-family: JetBrains Mono; font-size:0.9em;'><b>{n}:~$</b> {msg['content']}</span><br><br>", unsafe_allow_html=True)
 
@@ -274,7 +223,7 @@ def ai_terminal():
             if AI_AVAILABLE and st.session_state.vec is not None:
                 ctx = f"Target: {st.session_state.target if st.session_state.target else 'Global'}. {prompt}"
                 ans = get_ai_response(ctx, st.session_state.vec, st.session_state.tfidf, st.session_state.rag_df)
-            else: ans = "AI ENGINE OFFLINE. LOCAL CACHE EMPTY."
+            else: ans = "AI ENGINE OFFLINE."
         st.session_state.chat_log.append({"role": "assistant", "content": ans})
         st.rerun()
 
@@ -290,8 +239,7 @@ if st.session_state.target is None:
         st.write("")
         if st.button("💬 OVIP AI"): ai_terminal()
 
-    # The exact column layout to give the globe massive screen real estate
-    c_globe, c_stats = st.columns([7.5, 2.5])
+    c_globe, c_stats = st.columns([7, 3])
 
     with c_globe:
         lats = [v['lat'] for v in COUNTRIES.values()]
@@ -312,7 +260,7 @@ if st.session_state.target is None:
             center=dict(lon=78.96, lat=20.59), projection_rotation=dict(lon=78.96, lat=20.59, roll=0)
         )
         
-        fig_globe.update_layout(height=680, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_globe.update_layout(height=650, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         
         event = st.plotly_chart(fig_globe, on_select="rerun", selection_mode="points", use_container_width=True)
         if event and "selection" in event and event["selection"]["points"]:
@@ -320,56 +268,47 @@ if st.session_state.target is None:
             st.rerun()
 
     with c_stats:
-        # PURE STREAMLIT CONTAINER WITH ALL THREE DATA BLOCKS
+        # PURE STREAMLIT CONTAINER WITH COLORIZED MARKDOWN
         with st.container():
-            # 1. NPRS-1 ENGINE
+            # NPRS-1 ENGINE BLOCK
+            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>[ NPRS-1 ENGINE ]</p>", unsafe_allow_html=True)
             st.markdown("""
-            <div style='background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); padding: 15px; border-radius: 4px; margin-bottom: 15px;'>
-                <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>[ NPRS-1 ENGINE ]</p>
-                <div style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.8;'>
-                    STATUS: <span style='color: #00f0ff; font-weight: bold;'>ONLINE</span><br>
-                    CONFIDENCE: <span style='color: #00f0ff; font-weight: bold;'>68.2% (UP_TREND)</span><br>
-                    NEXT_CYCLE: <span style='color: #cbd5e1;'>12H:45M:03S</span>
-                </div>
+            <div style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.8; margin-bottom: 25px;'>
+                STATUS: <span style='color: #00f0ff; font-weight: bold;'>ONLINE</span><br>
+                CONFIDENCE: <span style='color: #00f0ff; font-weight: bold;'>68.2% (UP_TREND)</span><br>
+                NEXT_CYCLE: <span style='color: #cbd5e1;'>12H:45M:03S</span>
             </div>
             """, unsafe_allow_html=True)
             
-            # 2. MACRO ENVIRONMENT
+            st.markdown("<div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div>", unsafe_allow_html=True)
+            
+            # MACRO ENVIRONMENT BLOCK
+            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>[ MACRO_ENVIRONMENT ]</p>", unsafe_allow_html=True)
             st.markdown("""
-            <div style='background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); padding: 15px; border-radius: 4px; margin-bottom: 15px;'>
-                <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>[ MACRO_ENVIRONMENT ]</p>
-                <div style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.8;'>
-                    REGIME: <span style='color: #ffd700; font-weight: bold;'>MODERATE_RISK</span><br>
-                    CATALYST: <span style='color: #cbd5e1;'>TARIFF_POLICY_SHIFT</span><br>
-                    VOLATILITY: <span style='color: #00f0ff; font-weight: bold;'>ELEVATED (+1.4%)</span>
-                </div>
+            <div style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.8; margin-bottom: 25px;'>
+                REGIME: <span style='color: #ffd700; font-weight: bold;'>MODERATE_RISK</span><br>
+                CATALYST: <span style='color: #cbd5e1;'>TARIFF_POLICY_SHIFT</span><br>
+                VOLATILITY: <span style='color: #00f0ff; font-weight: bold;'>ELEVATED (+1.4%)</span>
             </div>
             """, unsafe_allow_html=True)
+            
+            st.markdown("<div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div>", unsafe_allow_html=True)
 
-            # 3. LIVE MACRO FEED (SCROLLABLE)
+            # LIVE FEED BLOCK
+            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 15px;'>[ LIVE_FEED ]</p>", unsafe_allow_html=True)
             st.markdown("""
-            <div style='background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); padding: 15px; border-radius: 4px; height: 350px; overflow-y: auto;'>
-                <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid rgba(0,240,255,0.3); padding-bottom: 5px;'>[ LIVE_MACRO_FEED ]</p>
-                
-                <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; margin-bottom: 20px;'>
-                    <span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span> <span style='color: #e2e8f0; font-weight: bold;'>US-IRAN TENSIONS</span><br>
-                    <span style='color: #cbd5e1;'>Escalating rhetoric and transit harassment in the Strait of Hormuz is embedding a $2-$3 geopolitical risk premium.</span>
-                </div>
-                
-                <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
-                    <span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>OPEC+ SHIFT</span><br>
-                    <span style='color: #cbd5e1;'>Saudi Arabia leaning toward resuming gradual production increases in April 2026 to defend market share.</span>
-                </div>
-                
-                <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
-                    <span style='color: #00f0ff; font-weight: bold; font-family: Orbitron;'>[ UPDATE ]</span> <span style='color: #e2e8f0; font-weight: bold;'>IEA OVERSUPPLY FORECAST</span><br>
-                    <span style='color: #cbd5e1;'>Global oil inventories swelled by 477M barrels last year. A severe supply glut is projected through late 2026, driven largely by non-OPEC output.</span>
-                </div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; margin-bottom: 15px;'>
+                <span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span> <span style='color: #e2e8f0; font-weight: bold;'>US-IRAN TENSIONS</span><br>
+                <span style='color: #cbd5e1;'>Escalating rhetoric and transit harassment in the Strait of Hormuz is embedding a $2-$3 geopolitical risk premium.</span>
+            </div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'>
+                <span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>OPEC+ SHIFT</span><br>
+                <span style='color: #cbd5e1;'>Saudi Arabia leaning toward resuming gradual production increases in April 2026.</span>
             </div>
             """, unsafe_allow_html=True)
 
 else:
-    # --- COUNTRY DASHBOARD VIEW (PREVIOUS FORMAT PRESERVED) ---
+    # --- COUNTRY DASHBOARD VIEW (NATIVE STREAMLIT LAYOUT WITH COLORS) ---
     target = st.session_state.target
     intel = COUNTRIES[target]
     latest = df_main.iloc[-1]
@@ -399,7 +338,7 @@ else:
     col_left, col_right = st.columns([2.5, 1.5])
 
     with col_left:
-        st.markdown(f"<h4 style='color:#00f0ff; margin-bottom: 5px;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#00f0ff; margin-bottom: 15px;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
         chart_df = df_main.dropna(subset=['Date']).tail(100).copy()
         
         fig = make_subplots(specs=[[{"secondary_y": True}]])
