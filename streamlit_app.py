@@ -28,14 +28,14 @@ st.markdown("""
         height: 100vh !important;
     }
     
-    /* STRICT PADDING REMOVAL */
+    /* ELIMINATE TOP PADDING COMPLETELY */
     .block-container {
         padding-top: 0rem !important; 
         padding-bottom: 0rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
         max-width: 100% !important;
-        margin-top: -60px !important; /* Pulls UI up higher */
+        margin-top: -65px !important; /* Pulls UI up to the absolute top edge */
     }
     header {visibility: hidden;}
 
@@ -69,22 +69,23 @@ st.markdown("""
         margin-bottom: 0 !important;
     }
 
-    /* CUSTOM FLEXBOX HEADER FOR ALIGNMENT */
+    /* CUSTOM FLEXBOX HEADER TO KILL EMPTY COLUMNS */
     .flex-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
-        padding-top: 20px;
-        margin-bottom: 10px;
+        align-items: center; /* Aligns text and button perfectly */
+        padding-top: 25px;
+        margin-bottom: 5px;
         border-bottom: 1px solid rgba(0, 240, 255, 0.3);
         padding-bottom: 10px;
     }
 
+    /* ALL METRICS CHANGED TO NEON BLUE */
     [data-testid="stMetricValue"] {
         font-family: 'JetBrains Mono', monospace !important;
         font-weight: 700 !important;
-        color: #00ff41 !important; 
-        text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+        color: #00f0ff !important; /* Changed from green to blue */
+        text-shadow: 0 0 5px rgba(0, 240, 255, 0.3);
     }
     
     [data-testid="stMetricLabel"] {
@@ -100,6 +101,7 @@ st.markdown("""
         text-transform: uppercase;
         transition: all 0.2s ease;
         padding: 5px 20px !important;
+        width: 100% !important;
     }
     .stButton>button:hover {
         background: #00f0ff !important;
@@ -151,37 +153,42 @@ if 'rag_setup' not in st.session_state:
 # ==========================================
 if 'target' not in st.session_state: st.session_state.target = None
 
+# Base Sci-Fi Colors
+C_SAFE = '#00f0ff' # Changed low risk from green to blue
+C_WARN = '#ffd700'
+C_DANG = '#ff003c'
+
 COUNTRIES = {
-    'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'info': 'Major importer. High sensitivity to Brent/Dubai spreads. Expanding strategic reserves capacity.', 'color': '#00ff41', 'mod': 0.95},
-    'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'info': 'Swing producer. Permian output highly elastic to WTI prices >$70/bbl.', 'color': '#00f0ff', 'mod': 1.0},
-    'CHINA': {'lat': 35.86, 'lon': 104.20, 'risk': 'HIGH', 'info': 'Largest importer. Teapot refinery quotas dictate short-term physical demand cycles.', 'color': '#ff003c', 'mod': 1.1},
-    'RUSSIA': {'lat': 61.52, 'lon': 105.31, 'risk': 'CRITICAL', 'info': 'Sanctioned exporter. Urals crude trading at structural discount. High shadow fleet reliance.', 'color': '#ff003c', 'mod': 1.25},
-    'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'info': 'De facto OPEC+ leader. ~3M bpd spare capacity acts as primary market shock absorber.', 'color': '#ffd700', 'mod': 1.0},
-    'UAE': {'lat': 23.42, 'lon': 53.85, 'risk': 'LOW', 'info': 'Key logistics hub. Fujairah port volumes serve as leading indicator for Middle East exports.', 'color': '#00ff41', 'mod': 0.98},
-    'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'info': 'Sanctioned. Controls Strait of Hormuz chokepoint (21M bpd transit risk).', 'color': '#ff003c', 'mod': 1.3},
-    'VENEZUELA': {'lat': 6.42, 'lon': -66.58, 'risk': 'HIGH', 'info': 'Heavy crude specialist. Production hampered by structural underinvestment and sanctions.', 'color': '#ff003c', 'mod': 1.15},
-    'BRAZIL': {'lat': -14.23, 'lon': -51.92, 'risk': 'LOW', 'info': 'Non-OPEC growth driver. Pre-salt offshore fields lowering national breakeven costs.', 'color': '#00ff41', 'mod': 0.9},
-    'UK': {'lat': 55.37, 'lon': -3.43, 'risk': 'MEDIUM', 'info': 'Brent benchmark origin. Production naturally declining; regulatory uncertainty rising.', 'color': '#00f0ff', 'mod': 1.02},
-    'NORWAY': {'lat': 60.47, 'lon': 8.46, 'risk': 'LOW', 'info': 'Highly reliable European supplier. Johan Sverdrup field provides heavy/medium baseload.', 'color': '#00ff41', 'mod': 0.9},
-    'NIGERIA': {'lat': 9.08, 'lon': 8.67, 'risk': 'HIGH', 'info': 'Light sweet crude exporter. Prone to onshore pipeline vandalism and force majeures.', 'color': '#ff003c', 'mod': 1.2},
-    'ANGOLA': {'lat': -11.20, 'lon': 17.87, 'risk': 'MEDIUM', 'info': 'Exited OPEC. Deepwater production declining faster than replacement rate.', 'color': '#ffd700', 'mod': 1.05},
-    'LIBYA': {'lat': 26.33, 'lon': 17.22, 'risk': 'CRITICAL', 'info': 'Highly volatile production. Export terminals frequently blockaded by rival factions.', 'color': '#ff003c', 'mod': 1.4},
-    'IRAQ': {'lat': 33.22, 'lon': 43.67, 'risk': 'HIGH', 'info': 'OPEC quota compliance issues. Federal vs. Kurdish export disputes restrict northern flows.', 'color': '#ff003c', 'mod': 1.15},
-    'KUWAIT': {'lat': 29.31, 'lon': 47.48, 'risk': 'LOW', 'info': 'Stable OPEC producer. Al-Zour refinery shifting export mix from crude to products.', 'color': '#00ff41', 'mod': 0.95},
-    'QATAR': {'lat': 25.35, 'lon': 51.18, 'risk': 'LOW', 'info': 'LNG dominant, but condensate exports remain critical for Asian petrochemical margins.', 'color': '#00ff41', 'mod': 0.95},
-    'CANADA': {'lat': 56.13, 'lon': -106.34, 'risk': 'LOW', 'info': 'Heavy crude (WCS). Trans Mountain expansion finally relieving tidewater access bottlenecks.', 'color': '#00ff41', 'mod': 0.98},
-    'MEXICO': {'lat': 23.63, 'lon': -102.55, 'risk': 'MEDIUM', 'info': 'Maya crude exporter. State-run Pemex struggling with massive debt load and declining yields.', 'color': '#ffd700', 'mod': 1.05},
-    'GERMANY': {'lat': 51.16, 'lon': 10.45, 'risk': 'MEDIUM', 'info': 'Macro industrial slowdown reducing middle-distillate (diesel) demand.', 'color': '#00f0ff', 'mod': 1.0},
-    'JAPAN': {'lat': 36.20, 'lon': 138.25, 'risk': 'MEDIUM', 'info': 'Major importer. Yen depreciation inflating local energy costs; nuclear restarts sluggish.', 'color': '#00f0ff', 'mod': 1.0},
-    'SOUTH KOREA': {'lat': 35.90, 'lon': 127.76, 'risk': 'LOW', 'info': 'Top-tier refining hub. Highly dependent on Middle East sour crude imports.', 'color': '#00ff41', 'mod': 0.95},
-    'AUSTRALIA': {'lat': -25.27, 'lon': 133.77, 'risk': 'LOW', 'info': 'LNG powerhouse. Domestic refining capacity significantly reduced in recent years.', 'color': '#00ff41', 'mod': 0.95},
-    'ALGERIA': {'lat': 28.03, 'lon': 1.65, 'risk': 'MEDIUM', 'info': 'Sahara Blend exporter. Critical pipeline gas supplier to Southern Europe.', 'color': '#ffd700', 'mod': 1.0},
-    'EGYPT': {'lat': 26.82, 'lon': 30.80, 'risk': 'HIGH', 'info': 'Controls Suez Canal/SUMED pipeline. Houthi Red Sea attacks severely disrupting transit revenues.', 'color': '#ff003c', 'mod': 1.15},
-    'TURKEY': {'lat': 38.96, 'lon': 35.24, 'risk': 'MEDIUM', 'info': 'Controls Bosphorus Strait. Key transit hub for Russian and Caspian crude.', 'color': '#ffd700', 'mod': 1.05},
-    'SOUTH AFRICA': {'lat': -30.55, 'lon': 22.93, 'risk': 'MEDIUM', 'info': 'Cape of Good Hope rerouting adding 10-14 days to East-West freight voyages.', 'color': '#ffd700', 'mod': 1.1},
-    'SINGAPORE': {'lat': 1.35, 'lon': 103.81, 'risk': 'LOW', 'info': 'Global pricing hub and chokepoint (Strait of Malacca). Bunkering demand remains robust.', 'color': '#00ff41', 'mod': 0.95},
-    'INDONESIA': {'lat': -0.78, 'lon': 113.92, 'risk': 'MEDIUM', 'info': 'Former OPEC member. Rising domestic demand absorbing local production.', 'color': '#ffd700', 'mod': 1.0},
-    'OMAN': {'lat': 21.51, 'lon': 55.92, 'risk': 'LOW', 'info': 'Key benchmark component (Dubai/Oman). Non-OPEC Middle East producer.', 'color': '#00ff41', 'mod': 0.95}
+    'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'info': 'Major importer. High sensitivity to Brent/Dubai spreads. Expanding strategic reserves capacity.', 'color': C_SAFE, 'mod': 0.95},
+    'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'info': 'Swing producer. Permian output highly elastic to WTI prices >$70/bbl.', 'color': C_WARN, 'mod': 1.0},
+    'CHINA': {'lat': 35.86, 'lon': 104.20, 'risk': 'HIGH', 'info': 'Largest importer. Teapot refinery quotas dictate short-term physical demand cycles.', 'color': C_DANG, 'mod': 1.1},
+    'RUSSIA': {'lat': 61.52, 'lon': 105.31, 'risk': 'CRITICAL', 'info': 'Sanctioned exporter. Urals crude trading at structural discount. High shadow fleet reliance.', 'color': C_DANG, 'mod': 1.25},
+    'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'info': 'De facto OPEC+ leader. ~3M bpd spare capacity acts as primary market shock absorber.', 'color': C_WARN, 'mod': 1.0},
+    'UAE': {'lat': 23.42, 'lon': 53.85, 'risk': 'LOW', 'info': 'Key logistics hub. Fujairah port volumes serve as leading indicator for Middle East exports.', 'color': C_SAFE, 'mod': 0.98},
+    'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'info': 'Sanctioned. Controls Strait of Hormuz chokepoint (21M bpd transit risk).', 'color': C_DANG, 'mod': 1.3},
+    'VENEZUELA': {'lat': 6.42, 'lon': -66.58, 'risk': 'HIGH', 'info': 'Heavy crude specialist. Production hampered by structural underinvestment and sanctions.', 'color': C_DANG, 'mod': 1.15},
+    'BRAZIL': {'lat': -14.23, 'lon': -51.92, 'risk': 'LOW', 'info': 'Non-OPEC growth driver. Pre-salt offshore fields lowering national breakeven costs.', 'color': C_SAFE, 'mod': 0.9},
+    'UK': {'lat': 55.37, 'lon': -3.43, 'risk': 'MEDIUM', 'info': 'Brent benchmark origin. Production naturally declining; regulatory uncertainty rising.', 'color': C_WARN, 'mod': 1.02},
+    'NORWAY': {'lat': 60.47, 'lon': 8.46, 'risk': 'LOW', 'info': 'Highly reliable European supplier. Johan Sverdrup field provides heavy/medium baseload.', 'color': C_SAFE, 'mod': 0.9},
+    'NIGERIA': {'lat': 9.08, 'lon': 8.67, 'risk': 'HIGH', 'info': 'Light sweet crude exporter. Prone to onshore pipeline vandalism and force majeures.', 'color': C_DANG, 'mod': 1.2},
+    'ANGOLA': {'lat': -11.20, 'lon': 17.87, 'risk': 'MEDIUM', 'info': 'Exited OPEC. Deepwater production declining faster than replacement rate.', 'color': C_WARN, 'mod': 1.05},
+    'LIBYA': {'lat': 26.33, 'lon': 17.22, 'risk': 'CRITICAL', 'info': 'Highly volatile production. Export terminals frequently blockaded by rival factions.', 'color': C_DANG, 'mod': 1.4},
+    'IRAQ': {'lat': 33.22, 'lon': 43.67, 'risk': 'HIGH', 'info': 'OPEC quota compliance issues. Federal vs. Kurdish export disputes restrict northern flows.', 'color': C_DANG, 'mod': 1.15},
+    'KUWAIT': {'lat': 29.31, 'lon': 47.48, 'risk': 'LOW', 'info': 'Stable OPEC producer. Al-Zour refinery shifting export mix from crude to products.', 'color': C_SAFE, 'mod': 0.95},
+    'QATAR': {'lat': 25.35, 'lon': 51.18, 'risk': 'LOW', 'info': 'LNG dominant, but condensate exports remain critical for Asian petrochemical margins.', 'color': C_SAFE, 'mod': 0.95},
+    'CANADA': {'lat': 56.13, 'lon': -106.34, 'risk': 'LOW', 'info': 'Heavy crude (WCS). Trans Mountain expansion finally relieving tidewater access bottlenecks.', 'color': C_SAFE, 'mod': 0.98},
+    'MEXICO': {'lat': 23.63, 'lon': -102.55, 'risk': 'MEDIUM', 'info': 'Maya crude exporter. State-run Pemex struggling with massive debt load and declining yields.', 'color': C_WARN, 'mod': 1.05},
+    'GERMANY': {'lat': 51.16, 'lon': 10.45, 'risk': 'MEDIUM', 'info': 'Macro industrial slowdown reducing middle-distillate (diesel) demand.', 'color': C_WARN, 'mod': 1.0},
+    'JAPAN': {'lat': 36.20, 'lon': 138.25, 'risk': 'MEDIUM', 'info': 'Major importer. Yen depreciation inflating local energy costs; nuclear restarts sluggish.', 'color': C_WARN, 'mod': 1.0},
+    'SOUTH KOREA': {'lat': 35.90, 'lon': 127.76, 'risk': 'LOW', 'info': 'Top-tier refining hub. Highly dependent on Middle East sour crude imports.', 'color': C_SAFE, 'mod': 0.95},
+    'AUSTRALIA': {'lat': -25.27, 'lon': 133.77, 'risk': 'LOW', 'info': 'LNG powerhouse. Domestic refining capacity significantly reduced in recent years.', 'color': C_SAFE, 'mod': 0.95},
+    'ALGERIA': {'lat': 28.03, 'lon': 1.65, 'risk': 'MEDIUM', 'info': 'Sahara Blend exporter. Critical pipeline gas supplier to Southern Europe.', 'color': C_WARN, 'mod': 1.0},
+    'EGYPT': {'lat': 26.82, 'lon': 30.80, 'risk': 'HIGH', 'info': 'Controls Suez Canal/SUMED pipeline. Houthi Red Sea attacks severely disrupting transit revenues.', 'color': C_DANG, 'mod': 1.15},
+    'TURKEY': {'lat': 38.96, 'lon': 35.24, 'risk': 'MEDIUM', 'info': 'Controls Bosphorus Strait. Key transit hub for Russian and Caspian crude.', 'color': C_WARN, 'mod': 1.05},
+    'SOUTH AFRICA': {'lat': -30.55, 'lon': 22.93, 'risk': 'MEDIUM', 'info': 'Cape of Good Hope rerouting adding 10-14 days to East-West freight voyages.', 'color': C_WARN, 'mod': 1.1},
+    'SINGAPORE': {'lat': 1.35, 'lon': 103.81, 'risk': 'LOW', 'info': 'Global pricing hub and chokepoint (Strait of Malacca). Bunkering demand remains robust.', 'color': C_SAFE, 'mod': 0.95},
+    'INDONESIA': {'lat': -0.78, 'lon': 113.92, 'risk': 'MEDIUM', 'info': 'Former OPEC member. Rising domestic demand absorbing local production.', 'color': C_WARN, 'mod': 1.0},
+    'OMAN': {'lat': 21.51, 'lon': 55.92, 'risk': 'LOW', 'info': 'Key benchmark component (Dubai/Oman). Non-OPEC Middle East producer.', 'color': C_SAFE, 'mod': 0.95}
 }
 
 # ==========================================
@@ -196,7 +203,7 @@ def ai_terminal():
     chat_box = st.container(height=300, border=False)
     with chat_box:
         for msg in st.session_state.chat_log:
-            c = "#00f0ff" if msg['role'] == 'user' else "#00ff41"
+            c = "#00f0ff" if msg['role'] == 'user' else "#e2e8f0"
             n = "USER" if msg['role'] == 'user' else "DAEMON"
             st.markdown(f"<span style='color:{c}; font-family: JetBrains Mono; font-size:0.9em;'><b>{n}:~$</b> {msg['content']}</span><br><br>", unsafe_allow_html=True)
 
@@ -214,19 +221,14 @@ def ai_terminal():
 # 5. MAIN VIEW: GLOBE OR DASHBOARD
 # ==========================================
 if st.session_state.target is None:
-    # --- GLOBE VIEW (Flex Header to kill empty columns) ---
-    st.markdown("""
-        <div class="flex-header">
-            <div>
-                <h2 style="margin: 0; font-size: 2rem;">GLOBAL_THREAT_MATRIX</h2>
-                <span style="color:#94a3b8; font-family: 'JetBrains Mono'; font-size: 0.9rem;">> SELECT_TARGET_NODE</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    # --- GLOBE VIEW (Flex Header to kill empty space) ---
+    c_head, c_btn = st.columns([8.5, 1.5]) # Tight columns to prevent empty box rendering
     
-    # We use a 1-column layout for the button to push it right
-    c1, c2 = st.columns([8, 1])
-    with c2:
+    with c_head:
+        st.markdown("<h2 style='margin-top: 15px;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 14px; margin-top: -5px;'>> AWAITING TARGET SELECTION...</p>", unsafe_allow_html=True)
+    with c_btn:
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         if st.button("💬 OVIP AI"): ai_terminal()
     
     lats = [v['lat'] for v in COUNTRIES.values()]
@@ -252,7 +254,7 @@ if st.session_state.target is None:
     )
     
     # Negative top margin pulls the globe up
-    fig_globe.update_layout(height=750, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig_globe.update_layout(height=700, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     
     event = st.plotly_chart(fig_globe, on_select="rerun", selection_mode="points", use_container_width=True)
     if event and "selection" in event and event["selection"]["points"]:
@@ -267,25 +269,21 @@ else:
     mod = intel['mod']
     
     # Flex Header
-    st.markdown(f"""
-        <div class="flex-header" style="border-bottom-color: {intel['color']};">
-            <div>
-                <h2 style="color:{intel['color']}; margin: 0; font-size: 2rem;">NODE::{target}</h2>
-                <span style="color:#94a3b8; font-family: 'JetBrains Mono'; font-size: 0.9rem;">> UPLINK_ESTABLISHED</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    c_head, c_btn1, c_btn2 = st.columns([7, 1.5, 1.5])
     
-    c_btn1, c_btn2, c_gap = st.columns([1.5, 1.5, 7])
+    with c_head:
+        st.markdown(f"<h2 style='color:{intel['color']}; margin-top: 15px;'>NODE::{target}</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 14px; margin-top: -5px;'>> UPLINK_ESTABLISHED</p>", unsafe_allow_html=True)
+    
     with c_btn1:
-        if st.button("← RETURN"): st.session_state.target = None; st.rerun()
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        if st.button("← GLOBE"): st.session_state.target = None; st.rerun()
     with c_btn2:
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         if st.button("💬 OVIP AI"): ai_terminal()
         
-    st.write("")
-    
     # Metrics Row
-    st.markdown("<div class='animated-panel' style='margin-bottom: 15px;'>", unsafe_allow_html=True)
+    st.markdown("<div class='animated-panel' style='margin-bottom: 15px; margin-top: 5px;'>", unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("WTI_PREMIUM (ADJ)", f"${(latest.get('WTI', 75) * mod):.2f}")
     m2.metric("LOCAL_VOL_SIGMA", f"{(latest.get('Volatility', 0.1) * mod):.3f}")
@@ -314,7 +312,7 @@ else:
         rgba_fill = f'rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.1)'
 
         fig.add_trace(go.Scatter(
-            x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Volatility',
+            x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Vol',
             line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=rgba_fill
         ), secondary_y=False)
 
@@ -325,7 +323,7 @@ else:
 
         fig.update_layout(
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            height=340, margin=dict(l=0, r=0, t=10, b=0),
+            height=350, margin=dict(l=0, r=0, t=10, b=0),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0"))
         )
         fig.update_xaxes(showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', tickfont=dict(color="#94a3b8"))
@@ -354,7 +352,7 @@ else:
         <div>
             <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron";'>[ DRIVERS ]</p>
             <ul style='font-family: "JetBrains Mono"; font-size: 13px; line-height: 2.0; color: #94a3b8;'>
-                <li><b>GPR_TRACKING:</b> <span style='color: #00ff41;'>{(latest.get('gpr', 50)*mod):.1f}</span></li>
+                <li><b>GPR_TRACKING:</b> <span style='color: #00f0ff;'>{(latest.get('gpr', 50)*mod):.1f}</span></li>
                 <li><b>FORECAST:</b> <span style='color: {intel["color"]};'>{'Escalate' if intel['risk'] in ['HIGH', 'CRITICAL'] else ('Maintain' if intel['risk'] == 'MEDIUM' else 'Stabilize')}</span></li>
                 <li><b>CORRELATION:</b> {'High' if intel['risk'] in ['MEDIUM', 'HIGH'] else 'Moderate'}</li>
             </ul>
