@@ -144,6 +144,7 @@ def hex_to_rgba(hex_code, alpha=0.1):
 # ==========================================
 if 'target' not in st.session_state: st.session_state.target = None
 
+# ALL GREEN REMOVED. Safe/Low Risk is now Neon Blue.
 C_SAFE = '#00f0ff' 
 C_WARN = '#ffd700'
 C_DANG = '#ff003c'
@@ -212,32 +213,34 @@ def ai_terminal():
 # ==========================================
 if st.session_state.target is None:
     # --- GLOBE VIEW WITH TEXT HUD ---
-    c_head, c_hud1, c_hud2, c_btn = st.columns([3.5, 3.5, 3.5, 1.5]) 
+    c_head, c_hud1, c_hud2, c_btn = st.columns([3.5, 3, 3, 1.5]) 
     
     with c_head:
         st.markdown("<h2 style='margin-top: 5px; font-size: 1.8rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
         st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 12px; margin-top: -5px;'>> AWAITING_TARGET...</p>", unsafe_allow_html=True)
     
-    # TEXT HUD 1: Real Global Macro Drivers
+    # TEXT HUD 1: Replaces the empty boxes with cool Sci-Fi data
     with c_hud1:
         st.markdown("""
         <div class='hud-box'>
-            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ MACRO_DRIVERS ]</div>
-            <div style='font-family: JetBrains Mono; font-size: 11px; color: #e2e8f0; line-height: 1.5;'>
-                <span style='color: #ffd700;'>OPEC+ POLICY:</span> Extension of voluntary cuts through Q2 2026 holding market floor.<br>
-                <span style='color: #00f0ff;'>US TARIFFS:</span> Supply chains rerouting. Transport premiums up 14%.
+            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ NPRS-1 ENGINE ]</div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                STATUS: <span style='color: #00f0ff;'>ONLINE</span><br>
+                CONFIDENCE: <span style='color: #00f0ff;'>68.2% (UP_TREND)</span><br>
+                NEXT_CYCLE: 12H:45M:03S
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # TEXT HUD 2: Global Risk Environment
+    # TEXT HUD 2: Global Macro Status
     with c_hud2:
         st.markdown("""
         <div class='hud-box'>
-            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ GEOPOLITICAL_ENVIRONMENT ]</div>
-            <div style='font-family: JetBrains Mono; font-size: 11px; color: #e2e8f0; line-height: 1.5;'>
-                <span style='color: #ff003c;'>RED SEA:</span> Cape of Good Hope rerouting adding 14 days to freight.<br>
-                <span style='color: #ff003c;'>HORMUZ:</span> Harassment incidents embedding $3 risk premium.
+            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ MACRO_ENVIRONMENT ]</div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                REGIME: <span style='color: #ffd700;'>MODERATE_RISK</span><br>
+                CATALYST: TARIFF_POLICY_SHIFT<br>
+                VOLATILITY: <span style='color: #00f0ff;'>ELEVATED (+1.4%)</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -281,32 +284,34 @@ else:
     mod = intel['mod']
     
     # Header with HUD
-    c_head, c_hud1, c_hud2, c_btn1, c_btn2 = st.columns([3, 3.5, 3.5, 1.2, 1.2])
+    c_head, c_hud1, c_hud2, c_btn1, c_btn2 = st.columns([3, 2.5, 2.5, 1.2, 1.2])
     
     with c_head:
         st.markdown(f"<h2 style='color:{intel['color']}; margin-top: 5px; font-size: 1.8rem;'>NODE::{target}</h2>", unsafe_allow_html=True)
         st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 12px; margin-top: -5px;'>> UPLINK_ESTABLISHED</p>", unsafe_allow_html=True)
     
-    # Country-Specific Text HUD 1: Supply Impact
+    # Country-Specific Text HUD 1
     with c_hud1:
         st.markdown(f"""
         <div class='hud-box' style='border-color: {intel['color']}; box-shadow: inset 0 0 10px {hex_to_rgba(intel['color'], 0.1)};'>
             <div style='color: {intel['color']}; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ LOCAL_DYNAMICS ]</div>
-            <div style='font-family: JetBrains Mono; font-size: 11px; color: #e2e8f0; line-height: 1.5;'>
-                SUPPLY_IMPACT: <span style='color: {intel['color']};'>{'CRITICAL' if intel['risk'] in ['HIGH', 'CRITICAL'] else 'MODERATE'}</span><br>
-                CATALYST: {intel['info'].split('.')[0]}<br>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                GPR_MOMENTUM: <span style='color: {intel['color']};'>ELEVATED</span><br>
+                SUPPLY_IMPACT: TIER_1<br>
+                MARKET_CORRELATION: HIGH
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # Country-Specific Text HUD 2: WTI Premium vs Global Context
+    # Country-Specific Text HUD 2
     with c_hud2:
-        st.markdown(f"""
+        st.markdown("""
         <div class='hud-box'>
-            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ WTI_CORRELATION ]</div>
-            <div style='font-family: JetBrains Mono; font-size: 11px; color: #e2e8f0; line-height: 1.5;'>
-                GPR_MOMENTUM: <span style='color: #00f0ff;'>{(latest.get('gpr', 50)*mod):.1f}</span><br>
-                WTI_PREMIUM SPREAD: <span style='color: #ffd700;'>+{(mod - 1) * 100:.1f}%</span> vs Benchmark
+            <div style='color: #00f0ff; font-family: Orbitron; font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;'>[ ACTIVE_THREATS ]</div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; color: #e2e8f0; line-height: 1.4;'>
+                MARITIME_CHOKEPOINT: MONITORING<br>
+                POLICY_SHIFT: PENDING<br>
+                TRADE_TARIFFS: <span style='color: #00f0ff;'>ACTIVE</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
