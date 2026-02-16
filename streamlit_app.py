@@ -28,14 +28,14 @@ st.markdown("""
         height: 100vh !important;
     }
     
-    /* SAFE MARGINS: Pushes everything perfectly to the top without cutting text */
+    /* MAXIMIZE SCREEN REAL ESTATE, KILL PADDING */
     .block-container {
-        padding-top: 2rem !important; 
+        padding-top: 1rem !important; 
         padding-bottom: 0rem !important;
-        padding-left: 2rem !important;
-        padding-right: 1rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
         max-width: 100% !important;
-        margin-top: -50px !important; 
+        margin-top: -30px !important; 
     }
     header {visibility: hidden;}
 
@@ -51,13 +51,21 @@ st.markdown("""
         100% { opacity: 1; transform: translateY(0); }
     }
     
+    /* UNIFIED PANEL STYLING - Removes internal padding issues */
     .animated-panel {
         animation: slideUpFade 0.4s ease-out forwards;
         background: rgba(10, 15, 30, 0.6); 
         border: 1px solid rgba(0, 240, 255, 0.2); 
         border-radius: 4px; 
-        padding: 15px;
         backdrop-filter: blur(5px);
+    }
+
+    /* CUSTOM FEED CONTAINER - Solves the empty top block issue completely */
+    .feed-container {
+        height: 600px;
+        overflow-y: auto;
+        padding: 0px 15px 15px 15px; /* ZERO top padding inside the box */
+        margin-top: 0px; /* Forces content to the roof */
     }
 
     h1, h2, h3, h4 {
@@ -94,7 +102,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
     
-    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 2px; }
@@ -140,30 +147,12 @@ C_WARN = '#ffd700'
 C_DANG = '#ff003c'
 
 COUNTRIES = {
-    'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95,
-              'info': 'Third largest global oil importer. Expanding strategic reserves capacity.',
-              'catalyst': 'Russian crude import discounts shrinking by 12% MoM.',
-              'vuln': 'High dependency on seaborne crude imports (>85%).'},
-    'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0,
-            'info': 'Top global producer & swing supplier. Permian output elastic to WTI >$70.',
-            'catalyst': 'Broad-based import tariffs enacted; SPR refill operations active.',
-            'vuln': 'Gulf Coast hurricane exposure; political regime shifts.'},
-    'CHINA': {'lat': 35.86, 'lon': 104.20, 'risk': 'HIGH', 'color': C_DANG, 'mod': 1.1,
-              'info': 'Largest global importer. Teapot refinery quotas dictate physical demand cycles.',
-              'catalyst': 'Tariff escalation with US reducing manufacturing export demand.',
-              'vuln': 'Malacca Strait chokepoint reliance for 70% of crude imports.'},
-    'RUSSIA': {'lat': 61.52, 'lon': 105.31, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.25,
-               'info': 'Sanctioned exporter. Urals crude trading at structural discount.',
-               'catalyst': 'Sanction evasion routing detected via shadow fleet expansion.',
-               'vuln': 'Western financial sanctions blocking infrastructure CapEx.'},
-    'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0,
-                     'info': 'De facto OPEC+ leader. ~3M bpd spare capacity acts as market shock absorber.',
-                     'catalyst': 'OPEC+ leaning toward resuming output increases in April 2026.',
-                     'vuln': 'Fiscal break-even price remains elevated above $80/bbl.'},
-    'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.3,
-             'info': 'Sanctioned producer utilizing dark fleet logistics.',
-             'catalyst': 'Strait of Hormuz transit harassment incidents escalating risk premiums.',
-             'vuln': 'Regime instability and severe economic sanctions.'}
+    'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 'info': 'Third largest global oil importer. Expanding strategic reserves capacity.', 'catalyst': 'Russian crude import discounts shrinking by 12% MoM.', 'vuln': 'High dependency on seaborne crude imports (>85%).'},
+    'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Top global producer & swing supplier. Permian output elastic to WTI >$70.', 'catalyst': 'Broad-based import tariffs enacted; SPR refill operations active.', 'vuln': 'Gulf Coast hurricane exposure; political regime shifts.'},
+    'CHINA': {'lat': 35.86, 'lon': 104.20, 'risk': 'HIGH', 'color': C_DANG, 'mod': 1.1, 'info': 'Largest global importer. Teapot refinery quotas dictate physical demand cycles.', 'catalyst': 'Tariff escalation with US reducing manufacturing export demand.', 'vuln': 'Malacca Strait chokepoint reliance for 70% of crude imports.'},
+    'RUSSIA': {'lat': 61.52, 'lon': 105.31, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.25, 'info': 'Sanctioned exporter. Urals crude trading at structural discount.', 'catalyst': 'Sanction evasion routing detected via shadow fleet expansion.', 'vuln': 'Western financial sanctions blocking infrastructure CapEx.'},
+    'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'De facto OPEC+ leader. ~3M bpd spare capacity acts as market shock absorber.', 'catalyst': 'OPEC+ leaning toward resuming output increases in April 2026.', 'vuln': 'Fiscal break-even price remains elevated above $80/bbl.'},
+    'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.3, 'info': 'Sanctioned producer utilizing dark fleet logistics.', 'catalyst': 'Strait of Hormuz transit harassment incidents escalating risk premiums.', 'vuln': 'Regime instability and severe economic sanctions.'}
 }
 
 for k in ['UAE', 'VENEZUELA', 'BRAZIL', 'UK', 'NORWAY', 'NIGERIA', 'ANGOLA', 'LIBYA', 'IRAQ', 'KUWAIT', 'QATAR', 'CANADA', 'MEXICO', 'GERMANY', 'JAPAN', 'SOUTH KOREA', 'AUSTRALIA', 'ALGERIA', 'EGYPT', 'TURKEY', 'SOUTH AFRICA', 'SINGAPORE', 'INDONESIA', 'OMAN']:
@@ -197,7 +186,7 @@ def ai_terminal():
 # 5. MAIN VIEW: ROUTER
 # ==========================================
 
-# Clean Top Header (No empty boxes)
+# Clean Top Header 
 c_head, c_gap, c_btn = st.columns([6, 2, 1.5]) 
 with c_head:
     st.markdown("<h2 style='margin-top: 15px; font-size: 2rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
@@ -206,17 +195,15 @@ with c_btn:
     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
     if st.button("💬 OVIP AI UPLINK", use_container_width=True): ai_terminal()
 
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
 
 if st.session_state.target is None:
-    # --- HOME VIEW: GIANT GLOBE (LEFT) + THIN NEWS FEED (RIGHT) ---
-    c_globe, c_news = st.columns([7.5, 2.5]) # 75% Globe, 25% News Feed
+    # --- HOME VIEW: GIANT GLOBE (LEFT) + LIVE FEED (RIGHT) ---
+    c_globe, c_news = st.columns([7.5, 2.5]) 
     
     with c_globe:
-        lats = [v['lat'] for v in COUNTRIES.values()]
-        lons = [v['lon'] for v in COUNTRIES.values()]
-        names = list(COUNTRIES.keys())
-        colors = [v['color'] for v in COUNTRIES.values()]
+        lats = [v['lat'] for v in COUNTRIES.values()]; lons = [v['lon'] for v in COUNTRIES.values()]
+        names = list(COUNTRIES.keys()); colors = [v['color'] for v in COUNTRIES.values()]
         
         fig_globe = go.Figure(go.Scattergeo(
             lon = lons, lat = lats, text = names, mode = 'markers+text',
@@ -233,51 +220,56 @@ if st.session_state.target is None:
         
         fig_globe.update_layout(height=680, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         event = st.plotly_chart(fig_globe, on_select="rerun", selection_mode="points", use_container_width=True)
-        
         if event and "selection" in event and event["selection"]["points"]:
-            st.session_state.target = names[event["selection"]["points"][0]["point_index"]]
-            st.rerun()
+            st.session_state.target = names[event["selection"]["points"][0]["point_index"]]; st.rerun()
 
     with c_news:
-        st.markdown("<div class='animated-panel' style='height: 650px; overflow-y: auto; padding: 20px;'>", unsafe_allow_html=True)
-        st.markdown("<h4 style='color:#00f0ff; border-bottom: 1px solid rgba(0,240,255,0.3); padding-bottom: 10px; font-size: 1.1rem;'>LIVE_MACRO_FEED</h4>", unsafe_allow_html=True)
-        
+        # PURE HTML/CSS FIX FOR THE EMPTY BLOCK BUG
         st.markdown("""
-        <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'>
-            
-            <div style='margin-top: 15px; margin-bottom: 20px;'>
-                <span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span><br>
-                <span style='color: #e2e8f0;'><b>US-IRAN TENSIONS:</b> Escalating rhetoric and transit harassment in the Strait of Hormuz is actively embedding a $2-$3 geopolitical risk premium into Brent crude pricing.</span>
-            </div>
+        <div class='animated-panel'>
+            <h4 style='color:#00f0ff; border-bottom: 1px solid rgba(0,240,255,0.3); padding: 10px 15px; margin: 0; font-size: 1.1rem;'>LIVE_MACRO_FEED</h4>
+            <div class='feed-container'>
+                
+                <div style='margin-top: 15px; margin-bottom: 20px;'>
+                    <span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span><br>
+                    <span style='color: #e2e8f0; font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'><b>US-IRAN TENSIONS:</b> Escalating rhetoric and transit harassment in the Strait of Hormuz is actively embedding a $2-$3 geopolitical risk premium into Brent crude pricing.</span>
+                </div>
 
-            <div style='margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
-                <span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span><br>
-                <span style='color: #e2e8f0;'><b>OPEC+ POLICY SHIFT:</b> Saudi Arabia and the UAE are reportedly leaning toward resuming gradual production increases starting in April 2026 to reclaim market share ahead of summer demand.</span>
-            </div>
+                <div style='margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
+                    <span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span><br>
+                    <span style='color: #e2e8f0; font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'><b>OPEC+ POLICY SHIFT:</b> Saudi Arabia and the UAE are reportedly leaning toward resuming gradual production increases starting in April 2026 to reclaim market share ahead of summer demand.</span>
+                </div>
 
-            <div style='margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
-                <span style='color: #00f0ff; font-weight: bold; font-family: Orbitron;'>[ UPDATE ]</span><br>
-                <span style='color: #e2e8f0;'><b>IEA OVERSUPPLY FORECAST:</b> The IEA reports global oil inventories swelled by an extraordinary 477 million barrels last year. A severe supply glut is projected through late 2026, led by non-OPEC output.</span>
-            </div>
-            
-            <div style='border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
-                <span style='color: #00ff41; font-weight: bold; font-family: Orbitron;'>[ MACRO ]</span><br>
-                <span style='color: #e2e8f0;'><b>INFLATION DATA:</b> Softer U.S. inflation data this week has eased broader macroeconomic concerns, partially offsetting the bearish sentiment from rising global supply.</span>
-            </div>
+                <div style='margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
+                    <span style='color: #00f0ff; font-weight: bold; font-family: Orbitron;'>[ UPDATE ]</span><br>
+                    <span style='color: #e2e8f0; font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'><b>IEA OVERSUPPLY FORECAST:</b> The IEA reports global oil inventories swelled by an extraordinary 477 million barrels last year. A severe supply glut is projected through late 2026, led by non-OPEC output.</span>
+                </div>
+                
+                <div style='border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
+                    <span style='color: #00f0ff; font-weight: bold; font-family: Orbitron;'>[ MACRO ]</span><br>
+                    <span style='color: #e2e8f0; font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'><b>INFLATION DATA:</b> Softer U.S. inflation data this week has eased broader macroeconomic concerns, partially offsetting the bearish sentiment from rising global supply.</span>
+                </div>
 
+            </div>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # --- COUNTRY DASHBOARD VIEW (NO SENTIMENT GRAPH) ---
+    # --- COUNTRY DASHBOARD VIEW (DENSE LAYOUT) ---
     target = st.session_state.target
     intel = COUNTRIES.get(target, COUNTRIES['USA'])
     latest = df_main.iloc[-1]
     mod = intel['mod']
     
-    # Metrics Row
-    st.markdown("<div class='animated-panel' style='margin-bottom: 15px; margin-top: 5px; padding: 10px 20px;'>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 14px; margin-top: 5px;'>> UPLINK_ESTABLISHED: <span style='color:{intel['color']}; font-weight:bold; font-size:1.4rem;'>NODE::{target}</span></p>", unsafe_allow_html=True)
+    
+    c_b1, c_b2, c_b3 = st.columns([2, 2, 8])
+    with c_b1: 
+        if st.button("← RETURN TO GLOBE"): st.session_state.target = None; st.rerun()
+    with c_b2:
+        if st.button("💬 OVIP AI UPLINK"): ai_terminal()
+        
+    st.markdown("<div class='animated-panel' style='margin-bottom: 15px; margin-top: 10px; padding: 10px 20px;'>", unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("WTI_PREMIUM (ADJ)", f"${(latest.get('WTI', 75) * mod):.2f}")
     m2.metric("LOCAL_VOL_SIGMA", f"{(latest.get('Volatility', 0.1) * mod):.3f}")
@@ -290,35 +282,19 @@ else:
     """, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Content Row: Matrix (Left) & Intel (Right)
     col_chart, col_intel = st.columns([2.5, 1])
 
     with col_chart:
         st.markdown("<div class='animated-panel' style='height: 450px;'>", unsafe_allow_html=True)
-        st.markdown(f"<h4 style='color:#00f0ff;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
-        
-        st.markdown("""
-        <p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -5px; margin-bottom: 10px;'>
-        > INDICATOR: Annualized 30-day standard deviation of WTI daily returns. Rapid curve expansion indicates severe supply chain dislocation.
-        </p>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#00f0ff; padding-left: 10px; padding-top: 5px;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
+        st.markdown("""<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -5px; margin-bottom: 10px; padding-left: 10px;'>> INDICATOR: Annualized 30-day std deviation of WTI daily returns.</p>""", unsafe_allow_html=True)
         
         chart_df = df_main.dropna(subset=['Date']).tail(100).copy()
         fig = make_subplots(specs=[[{"secondary_y": True}]])
-        fig.add_trace(go.Scatter(
-            x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Vol',
-            line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=hex_to_rgba(intel['color'], 0.1)
-        ), secondary_y=False)
-        fig.add_trace(go.Scatter(
-            x=chart_df['Date'], y=chart_df['WTI'], name='Global WTI ($)',
-            line=dict(color="#475569", width=2, dash='dot')
-        ), secondary_y=True)
+        fig.add_trace(go.Scatter(x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Vol', line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=hex_to_rgba(intel['color'], 0.1)), secondary_y=False)
+        fig.add_trace(go.Scatter(x=chart_df['Date'], y=chart_df['WTI'], name='Global WTI ($)', line=dict(color="#475569", width=2, dash='dot')), secondary_y=True)
 
-        fig.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            height=320, margin=dict(l=0, r=0, t=10, b=0),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0"))
-        )
+        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=340, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0")))
         fig.update_xaxes(showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', tickfont=dict(color="#94a3b8"))
         fig.update_yaxes(title_text="Volatility (Sigma)", color=intel['color'], showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', secondary_y=False)
         fig.update_yaxes(title_text="WTI Index", color="#475569", showgrid=False, secondary_y=True)
@@ -326,28 +302,25 @@ else:
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_intel:
-        st.markdown("<div class='animated-panel' style='height: 450px; overflow-y: auto;'>", unsafe_allow_html=True)
-        st.markdown(f"<h4 style='color:#00f0ff; border-bottom: 1px solid rgba(0, 240, 255, 0.3); padding-bottom: 10px;'>DEEP_INTEL</h4>", unsafe_allow_html=True)
+        st.markdown("<div class='animated-panel' style='height: 450px; padding: 0;'>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#00f0ff; border-bottom: 1px solid rgba(0, 240, 255, 0.3); padding: 15px;'>DEEP_INTEL</h4>", unsafe_allow_html=True)
         
         st.markdown(f"""
-        <div style='margin-top: 15px;'>
-            <p style='color: {intel["color"]}; font-weight: 700; font-size: 1.1em; font-family: "Orbitron"; text-shadow: 0 0 5px {intel["color"]};'>[ RISK_TIER: {intel["risk"]} ]</p>
-            <p style='font-family: "JetBrains Mono"; font-size: 13px; line-height: 1.6; color: #cbd5e1;'>
-                > {intel['info']}
-            </p>
-        </div>
-        <div style='border-top: 1px solid rgba(0, 240, 255, 0.2); margin: 15px 0;'></div>
-        
-        <div style='margin-bottom: 15px;'>
-            <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron"; margin-bottom: 5px;'>[ CATALYST ]</p>
-            <p style='font-family: "JetBrains Mono"; font-size: 12px; line-height: 1.5; color: #94a3b8;'>{intel['catalyst']}</p>
-        </div>
-
-        <div style='border-top: 1px solid rgba(0, 240, 255, 0.2); margin: 15px 0;'></div>
-
-        <div>
-            <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron"; margin-bottom: 5px;'>[ VULNERABILITY ]</p>
-            <p style='font-family: "JetBrains Mono"; font-size: 12px; line-height: 1.5; color: #94a3b8;'>{intel['vuln']}</p>
+        <div class='feed-container' style='height: 380px;'>
+            <div style='margin-top: 5px;'>
+                <p style='color: {intel["color"]}; font-weight: 700; font-size: 1.1em; font-family: "Orbitron"; text-shadow: 0 0 5px {intel["color"]};'>[ RISK_TIER: {intel["risk"]} ]</p>
+                <p style='font-family: "JetBrains Mono"; font-size: 13px; line-height: 1.6; color: #cbd5e1;'>> {intel['info']}</p>
+            </div>
+            <div style='border-top: 1px solid rgba(0, 240, 255, 0.2); margin: 15px 0;'></div>
+            <div style='margin-bottom: 15px;'>
+                <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron"; margin-bottom: 5px;'>[ CATALYST ]</p>
+                <p style='font-family: "JetBrains Mono"; font-size: 12px; line-height: 1.5; color: #94a3b8;'>{intel['catalyst']}</p>
+            </div>
+            <div style='border-top: 1px solid rgba(0, 240, 255, 0.2); margin: 15px 0;'></div>
+            <div>
+                <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron"; margin-bottom: 5px;'>[ VULNERABILITY ]</p>
+                <p style='font-family: "JetBrains Mono"; font-size: 12px; line-height: 1.5; color: #94a3b8;'>{intel['vuln']}</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
