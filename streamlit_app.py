@@ -16,7 +16,7 @@ except ImportError:
 # ==========================================
 st.set_page_config(page_title="OVIP // Command Center", layout="wide", initial_sidebar_state="collapsed")
 
-# We keep CSS only for colors and fonts, NOT for structural layout
+# CSS for styling colors, fonts, and containers, NOT layout structure.
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
@@ -79,12 +79,13 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
     
-    /* Native container styling for "panels" */
+    /* Native container styling for "panels" to avoid layout bugs */
     [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
         background: rgba(10, 15, 30, 0.6);
         border: 1px solid rgba(0, 240, 255, 0.2);
         border-radius: 4px;
-        padding: 15px;
+        padding: 20px;
+        backdrop-filter: blur(5px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -130,11 +131,11 @@ def create_feature_importance_chart(color):
         marker=dict(color=color, line=dict(color='rgba(255,255,255,0.2)', width=1))
     ))
     fig.update_layout(
-        height=200, margin=dict(l=10, r=10, t=30, b=10),
+        height=220, margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        title=dict(text="VOLATILITY_DRIVERS", font=dict(color="#00f0ff", family="Orbitron", size=12)),
+        title=dict(text="VOLATILITY_DRIVERS", font=dict(color="#00f0ff", family="Orbitron", size=14)),
         xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(color="#94a3b8")),
-        yaxis=dict(autorange="reversed", tickfont=dict(family="JetBrains Mono", size=11, color="#e2e8f0"))
+        yaxis=dict(autorange="reversed", tickfont=dict(family="JetBrains Mono", size=12, color="#e2e8f0"))
     )
     return fig
 
@@ -231,34 +232,47 @@ if st.session_state.target is None:
             st.rerun()
 
     with c_stats:
-        # PURE STREAMLIT MARKDOWN (NO DIVS) TO PREVENT GHOST BOXES
+        # PURE STREAMLIT CONTAINER WITH COLORIZED MARKDOWN
         with st.container():
-            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold;'>[ NPRS-1 ENGINE ]</p>", unsafe_allow_html=True)
+            # NPRS-1 ENGINE BLOCK
+            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>[ NPRS-1 ENGINE ]</p>", unsafe_allow_html=True)
             st.markdown("""
-            * **STATUS:** ONLINE
-            * **CONFIDENCE:** 68.2% (UP_TREND)
-            * **NEXT_CYCLE:** 12H:45M:03S
-            """)
+            <div style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.8; margin-bottom: 25px;'>
+                STATUS: <span style='color: #00f0ff; font-weight: bold;'>ONLINE</span><br>
+                CONFIDENCE: <span style='color: #00f0ff; font-weight: bold;'>68.2% (UP_TREND)</span><br>
+                NEXT_CYCLE: <span style='color: #cbd5e1;'>12H:45M:03S</span>
+            </div>
+            """, unsafe_allow_html=True)
             
-            st.markdown("---")
+            st.markdown("<div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div>", unsafe_allow_html=True)
             
-            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold;'>[ MACRO_ENVIRONMENT ]</p>", unsafe_allow_html=True)
+            # MACRO ENVIRONMENT BLOCK
+            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>[ MACRO_ENVIRONMENT ]</p>", unsafe_allow_html=True)
             st.markdown("""
-            * **REGIME:** MODERATE_RISK
-            * **CATALYST:** TARIFF_POLICY_SHIFT
-            * **VOLATILITY:** ELEVATED (+1.4%)
-            """)
+            <div style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.8; margin-bottom: 25px;'>
+                REGIME: <span style='color: #ffd700; font-weight: bold;'>MODERATE_RISK</span><br>
+                CATALYST: <span style='color: #cbd5e1;'>TARIFF_POLICY_SHIFT</span><br>
+                VOLATILITY: <span style='color: #00f0ff; font-weight: bold;'>ELEVATED (+1.4%)</span>
+            </div>
+            """, unsafe_allow_html=True)
             
-            st.markdown("---")
-            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold;'>[ LIVE_FEED ]</p>", unsafe_allow_html=True)
+            st.markdown("<div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div>", unsafe_allow_html=True)
+
+            # LIVE FEED BLOCK
+            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 15px;'>[ LIVE_FEED ]</p>", unsafe_allow_html=True)
             st.markdown("""
-            **[ CRITICAL ] US-IRAN TENSIONS:** Escalating rhetoric and transit harassment in the Strait of Hormuz is embedding a $2-$3 geopolitical risk premium.
-            
-            **[ WARNING ] OPEC+ SHIFT:** Saudi Arabia leaning toward resuming gradual production increases in April 2026.
-            """)
+            <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; margin-bottom: 15px;'>
+                <span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span> <span style='color: #e2e8f0; font-weight: bold;'>US-IRAN TENSIONS</span><br>
+                <span style='color: #cbd5e1;'>Escalating rhetoric and transit harassment in the Strait of Hormuz is embedding a $2-$3 geopolitical risk premium.</span>
+            </div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'>
+                <span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>OPEC+ SHIFT</span><br>
+                <span style='color: #cbd5e1;'>Saudi Arabia leaning toward resuming gradual production increases in April 2026.</span>
+            </div>
+            """, unsafe_allow_html=True)
 
 else:
-    # --- COUNTRY DASHBOARD VIEW (NATIVE STREAMLIT LAYOUT) ---
+    # --- COUNTRY DASHBOARD VIEW (NATIVE STREAMLIT LAYOUT WITH COLORS) ---
     target = st.session_state.target
     intel = COUNTRIES[target]
     latest = df_main.iloc[-1]
@@ -288,7 +302,7 @@ else:
     col_left, col_right = st.columns([2.5, 1.5])
 
     with col_left:
-        st.markdown(f"<h4 style='color:#00f0ff;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#00f0ff; margin-bottom: 15px;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
         chart_df = df_main.dropna(subset=['Date']).tail(100).copy()
         
         fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -309,25 +323,48 @@ else:
         st.plotly_chart(create_feature_importance_chart(intel['color']), use_container_width=True, config={'displayModeBar': False})
 
     with col_right:
-        # Pure Streamlit Container to prevent empty boxes
+        # Pure Streamlit Container with COLORIZED HTML/Markdown text
         with st.container():
-            st.markdown(f"<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold;'>[ LOCAL_DYNAMICS ]</p>", unsafe_allow_html=True)
-            st.markdown(f"> {intel['info']}")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown(f"<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold;'>[ MARKET_DATA ]</p>", unsafe_allow_html=True)
-            st.markdown(f"**{intel['figures']}**")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown(f"<p style='color: {intel['color']}; font-family: Orbitron; font-size: 14px; font-weight: bold;'>[ EVENT_IMPACT ]</p>", unsafe_allow_html=True)
-            st.markdown(f"{intel['impact']}")
-            
-            st.markdown("---")
-            
-            st.markdown(f"<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold;'>[ SYSTEM_FORECAST ]</p>", unsafe_allow_html=True)
+            # LOCAL DYNAMICS
             st.markdown(f"""
-            * **FORECAST:** {'Escalate' if intel['risk'] in ['HIGH', 'CRITICAL'] else ('Maintain' if intel['risk'] == 'MEDIUM' else 'Stabilize')}
-            * **CORRELATION:** {'High' if intel['risk'] in ['MEDIUM', 'HIGH'] else 'Moderate'}
-            """)
+            <div style='margin-bottom: 25px;'>
+                <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ LOCAL_DYNAMICS ]</p>
+                <p style='font-family: JetBrains Mono; font-size: 13px; color: #cbd5e1; line-height: 1.6; padding-left: 12px; border-left: 2px solid #00f0ff;'>
+                    {intel['info']}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # MARKET DATA
+            st.markdown(f"""
+            <div style='margin-bottom: 25px;'>
+                <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ MARKET_DATA ]</p>
+                <p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'>
+                    <span style='color: #00f0ff;'>&gt;</span> {intel['figures']}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # EVENT IMPACT (Colored based on risk)
+            st.markdown(f"""
+            <div style='margin-bottom: 25px;'>
+                <p style='color: {intel['color']}; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px; text-shadow: 0 0 8px {hex_to_rgba(intel['color'], 0.4)};'>[ EVENT_IMPACT ]</p>
+                <p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'>
+                    <span style='color: {intel['color']};'>&gt;</span> {intel['impact']}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"<div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div>", unsafe_allow_html=True)
+            
+            # SYSTEM FORECAST
+            st.markdown(f"""
+            <div>
+                 <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ SYSTEM_FORECAST ]</p>
+                 <ul style='font-family: "JetBrains Mono"; font-size: 13px; line-height: 2.0; color: #94a3b8; list-style-type: none; padding-left: 0;'>
+                    <li><span style='color: #00f0ff;'>[ GPR_TRACKING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{(latest.get('gpr', 50)*mod):.1f}</span></li>
+                    <li><span style='color: {intel["color"]};'>[ FORECAST ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'Escalate' if intel['risk'] in ['HIGH', 'CRITICAL'] else ('Maintain' if intel['risk'] == 'MEDIUM' else 'Stabilize')}</span></li>
+                    <li><span style='color: #00f0ff;'>[ CORRELATION ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'High' if intel['risk'] in ['MEDIUM', 'HIGH'] else 'Moderate'}</span></li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
