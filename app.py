@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import pydeck as pdk
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime
 import os
 
@@ -150,87 +151,55 @@ def render_globe():
                 st.rerun()
 
 # ==========================================
-# 5. VIEW 2: THE COMMAND DASHBOARD
+# 5. MAIN EVENT CHART (SAFE SUBPLOTS ENGINE)
 # ==========================================
-def render_dashboard():
-    target = st.session_state.target
-    data = COUNTRIES[target]
-    latest_data = df_main.iloc[-1]
-    
-    # TOP HUD HEADER
-    st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid {COLORS['cyan']}; padding-bottom: 5px; margin-bottom: 15px;">
-            <h2 style="margin: 0; color: {COLORS['cyan']};">NODE_ACTIVE :: {target} {data['flag']} - {data['name']}</h2>
-            <span style="color: {COLORS['matrix']};">UPLINK_SECURE | {datetime.utcnow().strftime('%H:%M:%S')} UTC</span>
-        </div>
-    """, unsafe_allow_html=True)
+st.markdown("### > MACRO-EVENT VOLATILITY IMPACT MATRIX")
 
-    # TWO-COLUMN HUD LAYOUT
-    col_nav, col_main = st.columns([1, 4])
-    
-    # --- LEFT SIDEBAR (NAVIGATION & LIVE METRICS) ---
-    with col_nav:
-        st.markdown("<div style='background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #00F0FF;'>", unsafe_allow_html=True)
-        if st.button("🔴 DISCONNECT_NODE"):
-            st.session_state.target = None
-            st.rerun()
-            
-        st.markdown("<hr style='border: 1px dashed #00FF41;'>", unsafe_allow_html=True)
-        st.markdown("### SYSTEM_METRICS")
-        st.metric("WTI_INDEX", f"${latest_data['WTI']:.2f}")
-        st.metric("VOL_SIGMA", f"{latest_data['Volatility']:.3f}")
-        st.metric("NPRS-1_SIGNAL", "▲ UP", "69.1% ACCURACY")
-        
-        st.markdown("<hr style='border: 1px dashed #00FF41;'>", unsafe_allow_html=True)
-        st.markdown("### INTERFACE")
-        if st.button("🎯 INTELLIGENCE"): st.session_state.active_tab = 'intel'; st.rerun()
-        if st.button("💬 AI_DAEMON"): st.session_state.active_tab = 'ai'; st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+# Drop any blank dates to prevent rendering errors
+chart_df = df_main.dropna(subset=['Date']).tail(150).copy()
 
-    # --- RIGHT MAIN AREA (DYNAMIC CONTENT) ---
-    with col_main:
-        # TACTICAL INTELLIGENCE TAB
-        if st.session_state.active_tab == 'intel':
-            st.markdown(f"#### > ANALYZING {target} TACTICAL DATA_STREAMS...")
-            
-            # Interactive Plotly Chart (Locked to 450px height so it doesn't scroll)
-            fig = go.Figure()
-            fig.update_layout(
-                template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,20,0,0.3)',
-                height=450, margin=dict(l=0, r=0, t=30, b=0),
-                xaxis=dict(showgrid=True, gridcolor='#003300'), yaxis=dict(showgrid=True, gridcolor='#003300')
-            )
-            fig.add_trace(go.Scatter(
-                x=df_main['Date'][-100:], y=df_main['Volatility'][-100:], 
-                name='Vol', line=dict(color=COLORS['cyan'], width=2), 
-                fill='tozeroy', fillcolor='rgba(0, 240, 255, 0.1)'
-            ))
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+# 1. Initialize Dual-Axis Chart safely using Plotly's native subplots engine
+fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-        # AI DAEMON TAB (THE GROQ TERMINAL)
-        elif st.session_state.active_tab == 'ai':
-            st.markdown("#### > DAEMON_V3 :: SECURE QUANTITATIVE AI UPLINK")
-            
-            # Scrollable chat box with fixed height
-            chat_container = st.container(height=450, border=False)
-            with chat_container:
-                for msg in st.session_state.chat:
-                    color = COLORS['cyan'] if msg['role'] == 'user' else COLORS['matrix']
-                    sender = "root@user" if msg['role'] == 'user' else "system@ovip"
-                    st.markdown(f"<p style='color: {color};'><b>{sender}:~$</b> {msg['content']}</p>", unsafe_allow_html=True)
-            
-            # Chat Input Form
-            if prompt := st.chat_input("> ENTER_COMMAND_STRING..."):
-                st.session_state.chat.append({"role": "user", "content": prompt})
-                st.rerun()
+# 2. Trace 1: Volatility (Primary Y)
+fig.add_trace(go.Scatter(
+    x=chart_df['Date'], y=chart_df['Volatility'], name='Volatility (Sigma)',
+    line=dict(color="#00f0ff", width=3, shape='spline'), fill='tozeroy', fillcolor='rgba(0, 240, 255, 0.1)'
+), secondary_y=False)
 
-            # Process AI response seamlessly
-            if st.session_state.chat[-1]["role"] == "user":
-                with st.spinner("PROCESSING_INTELLIGENCE_ROUTINE..."):
-                    ans = get_ai_response(st.session_state.chat[-1]["content"], vec, tfidf, rag_df)
-                    st.session_state.chat.append({"role": "assistant", "content": ans})
-                    st.rerun()
+# 3. Trace 2: WTI Price (Secondary Y)
+fig.add_trace(go.Scatter(
+    x=chart_df['Date'], y=chart_df['WTI'], name='WTI Price ($)',
+    line=dict(color="#00ff41", width=2, dash='dot')
+), secondary_y=True)
 
+# 4. Safe Event Markers 
+try:
+    max_vol = float(chart_df['Volatility'].max())
+    mid_date = chart_df['Date'].iloc[len(chart_df)//3]
+    late_date = chart_df['Date'].iloc[int(len(chart_df)//1.5)]
+
+    fig.add_vline(x=mid_date, line_width=2, line_dash="dash", line_color="#FF003C")
+    fig.add_vline(x=late_date, line_width=2, line_dash="dash", line_color="#FFD700")
+
+    fig.add_annotation(x=mid_date, y=max_vol, text="[ US TARIFFS ]", showarrow=False, yshift=15, font=dict(color="#FF003C", family="Orbitron"))
+    fig.add_annotation(x=late_date, y=max_vol * 0.9, text="[ OPEC POLICY ]", showarrow=False, yshift=15, font=dict(color="#FFD700", family="Orbitron"))
+except Exception as e:
+    pass # Silent failsafe
+
+# 5. Safely update layout WITHOUT touching axes dictionaries
+fig.update_layout(
+    template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,20,0,0.2)',
+    height=450, margin=dict(l=0, r=0, t=30, b=0),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+)
+
+# 6. Update Axes using native methods (Immune to dictionary ValueErrors)
+fig.update_xaxes(showgrid=True, gridcolor='rgba(0, 255, 65, 0.1)')
+fig.update_yaxes(title_text="Volatility (Sigma)", color="#00f0ff", showgrid=True, gridcolor='rgba(0, 255, 65, 0.1)', secondary_y=False)
+fig.update_yaxes(title_text="WTI Price (USD)", color="#00ff41", showgrid=False, secondary_y=True)
+
+st.plotly_chart(fig, use_container_width=True)
 # ==========================================
 # 6. APP ROUTER
 # ==========================================
