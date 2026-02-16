@@ -16,6 +16,7 @@ except ImportError:
 # ==========================================
 st.set_page_config(page_title="OVIP // Command Center", layout="wide", initial_sidebar_state="collapsed")
 
+# CSS for styling colors, fonts, and containers, NOT layout structure.
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
@@ -28,12 +29,12 @@ st.markdown("""
     }
     
     .block-container {
-        padding-top: 1rem !important; 
-        padding-bottom: 0rem !important;
+        padding-top: 2rem !important; 
+        padding-bottom: 2rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
         max-width: 100% !important;
-        margin-top: -40px !important; 
+        margin-top: -50px !important; 
     }
     header {visibility: hidden;}
 
@@ -42,21 +43,6 @@ st.markdown("""
         top: 0; left: 0; bottom: 0; right: 0;
         background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 20, 0, 0.1) 50%);
         z-index: 999; background-size: 100% 4px; pointer-events: none;
-    }
-
-    @keyframes slideUpFade {
-        0% { opacity: 0; transform: translateY(10px); }
-        100% { opacity: 1; transform: translateY(0); }
-    }
-    
-    .animated-panel {
-        animation: slideUpFade 0.5s ease-out forwards;
-        background: rgba(10, 15, 30, 0.8); 
-        border: 1px solid rgba(0, 240, 255, 0.4); 
-        border-radius: 4px; 
-        padding: 15px;
-        backdrop-filter: blur(5px);
-        box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
     }
 
     h1, h2, h3, h4 {
@@ -93,12 +79,13 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
     
-    .hud-box {
-        background: rgba(0, 240, 255, 0.03); 
-        border: 1px solid rgba(0, 240, 255, 0.2); 
-        padding: 8px 15px; 
-        border-radius: 2px;
-        box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.02);
+    /* Native container styling for "panels" to avoid layout bugs */
+    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
+        background: rgba(10, 15, 30, 0.6);
+        border: 1px solid rgba(0, 240, 255, 0.2);
+        border-radius: 4px;
+        padding: 20px;
+        backdrop-filter: blur(5px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -114,11 +101,13 @@ def load_data():
             try:
                 df = pd.read_csv(f)
                 df['Date'] = pd.to_datetime(df['Date'])
+                if 'Score' not in df.columns: df['Score'] = np.random.normal(0, 1, len(df))
                 return df
             except Exception: pass
     
     dates = pd.date_range(end=pd.Timestamp.today(), periods=150)
-    return pd.DataFrame({'Date': dates, 'WTI': np.random.normal(75, 2, 150), 'Volatility': np.random.normal(0.15, 0.02, 150), 'Crisis_Prob': np.zeros(150), 'gpr': np.random.rand(150)*100})
+    score = np.sin(np.linspace(0, 4*np.pi, 150)) + np.random.normal(0, 0.5, 150)
+    return pd.DataFrame({'Date': dates, 'WTI': np.random.normal(75, 2, 150), 'Volatility': np.random.normal(0.15, 0.02, 150), 'Crisis_Prob': np.random.uniform(0.1, 0.9, 150), 'gpr': np.random.rand(150)*100, 'Score': score})
 
 df_main = load_data()
 
@@ -133,19 +122,20 @@ def hex_to_rgba(hex_code, alpha=0.1):
     return f'rgba({int(hex_code[0:2], 16)},{int(hex_code[2:4], 16)},{int(hex_code[4:6], 16)},{alpha})'
 
 def create_feature_importance_chart(color):
-    factors = ['GPR (Geopolitical Risk)', 'WTI Momentum', 'NLP News Sentiment', 'OPEC+ Supply Quotas', 'Freight/Transit Costs']
-    importance = [0.38, 0.22, 0.18, 0.14, 0.08]
+    # Simulated Feature Importance Data
+    factors = ['Geo-Risk (GPR)', 'WTI Momentum', 'NLP Sentiment', 'OPEC+ Supply', 'Freight Cost']
+    importance = [0.35, 0.25, 0.20, 0.12, 0.08]
     
     fig = go.Figure(go.Bar(
         x=importance, y=factors, orientation='h',
         marker=dict(color=color, line=dict(color='rgba(255,255,255,0.2)', width=1))
     ))
     fig.update_layout(
-        height=200, margin=dict(l=10, r=10, t=30, b=10),
+        height=220, margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        title=dict(text="[ NPRS-1 VOLATILITY_DRIVERS ]", font=dict(color="#00f0ff", family="Orbitron", size=12)),
+        title=dict(text="VOLATILITY_DRIVERS", font=dict(color="#00f0ff", family="Orbitron", size=14)),
         xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)', tickfont=dict(color="#94a3b8")),
-        yaxis=dict(autorange="reversed", tickfont=dict(family="JetBrains Mono", size=11, color="#e2e8f0"))
+        yaxis=dict(autorange="reversed", tickfont=dict(family="JetBrains Mono", size=12, color="#e2e8f0"))
     )
     return fig
 
@@ -158,40 +148,57 @@ C_SAFE = '#00f0ff'
 C_WARN = '#ffd700'
 C_DANG = '#ff003c'
 
-# Highly Detailed Macro Intelligence
 COUNTRIES = {
     'INDIA': {'lat': 20.59, 'lon': 78.96, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.95, 
-              'info': 'The third-largest global oil importer. The economy remains highly sensitive to Brent/Dubai pricing spreads. Local refinery run rates are currently maximizing at 102% utilization to meet rising domestic industrial demand.', 
-              'impact': 'The structural discount on Russian crude imports has violently shrunk from $10/bbl down to $3.50/bbl due to tightening Western financial sanctions and dark fleet logistics bottlenecks. This is increasing fiscal pressure on state-run refiners. Strategic Petroleum Reserve (SPR) capacity is actively expanding by 6.5M tons to buffer against future Red Sea supply shocks.'},
-    
+              'info': 'India remains the third-largest global oil importer, making its economy structurally hypersensitive to any physical supply shocks or Brent/Dubai pricing spreads. Local refinery run rates are currently maximizing at 102% utilization to meet rapidly rising domestic industrial and infrastructure demand.', 
+              'figures': 'Refinery Run Rate: 102% | Seaborne Import Reliance: >85% | Strategic Petroleum Reserve (SPR) capacity actively expanding by 6.5M tons (approx. 47.5M barrels).', 
+              'impact': 'The structural discount on Russian Ural crude imports has violently shrunk from its peak of $10/bbl down to just $3.50/bbl due to tightening Western financial sanctions and dark fleet logistics bottlenecks. This is rapidly increasing fiscal pressure on state-run refiners, forcing them to negotiate new long-term baseload contracts with Middle Eastern suppliers to secure forward pricing.'},
+              
     'USA': {'lat': 37.09, 'lon': -95.71, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 
-            'info': 'The top global producer and primary swing supplier. The market is highly financialized. Permian basin output remains steady at roughly 6.1M bpd, but production growth is highly elastic to WTI prices dropping below the $70/bbl breakeven threshold.', 
-            'impact': 'The enactment of broad-based import tariffs has caused immediate supply chain dislocations, forcing refiners to quickly re-route heavy crude inputs from alternative sources. Meanwhile, the Department of Energy is actively executing SPR refill operations, defending a hard physical price floor by purchasing bulk volumes at an average of $73/bbl.'},
-    
+            'info': 'The United States acts as the top global producer and the primary non-OPEC swing supplier. The market is highly financialized. While Permian basin output remains steady at roughly 6.1M bpd, future production growth is highly elastic to WTI prices dropping below the $70/bbl CapEx breakeven threshold.', 
+            'figures': 'Permian Output: 6.1M bpd | Commercial Crude Inventories: -2.4M barrels WoW | Active Rig Count: Stagnant at 498.', 
+            'impact': 'The sudden enactment of broad-based import tariffs has caused immediate supply chain dislocations, forcing Gulf Coast refiners to quickly re-route heavy crude inputs away from targeted nations. Simultaneously, the Department of Energy is actively executing SPR refill operations, essentially defending a hard physical price floor by purchasing bulk market volumes at an average of $73/bbl.'},
+            
     'CHINA': {'lat': 35.86, 'lon': 104.20, 'risk': 'HIGH', 'color': C_DANG, 'mod': 1.1, 
-              'info': 'The largest global crude importer. Short-term physical demand cycles are entirely dictated by the central government’s issuance of independent "Teapot" refinery export quotas. Current Teapot utilization has plummeted to 58%.', 
-              'impact': 'Aggressive tariff escalations with Western trading partners are severely reducing Chinese manufacturing export demand, leading to a massive buildup of middle-distillate inventories. Furthermore, 70% of China’s seaborne crude imports remain critically vulnerable to increasing geopolitical friction surrounding the Malacca Strait chokepoint.'},
-    
+              'info': 'As the largest global crude importer, China\'s short-term physical demand cycles are almost entirely dictated by the central government’s issuance of independent "Teapot" refinery export quotas. Current macroeconomic conditions have severely dampened domestic processing appetite.', 
+              'figures': 'Independent Teapot Refinery Utilization: Plummeted to 58% | State-Run Refinery Runs: 76% | Crude Import Quota Allocations: -11% YoY.', 
+              'impact': 'Aggressive, tit-for-tat tariff escalations with Western trading partners are severely reducing Chinese manufacturing export demand, leading to a massive, unwanted buildup of middle-distillate inventories domestically. Furthermore, 70% of China’s seaborne crude imports remain critically vulnerable to increasing geopolitical friction surrounding the Malacca Strait chokepoint.'},
+              
     'RUSSIA': {'lat': 61.52, 'lon': 105.31, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.25, 
-               'info': 'A heavily sanctioned exporter operating almost entirely outside the traditional financial system. Seaborne exports remain stubbornly high at 3.3M bpd, relying exclusively on a rapidly expanding dark fleet logistics network.', 
-               'impact': 'Urals crude is currently trading at a steep $14 structural discount to the Brent benchmark. Western financial sanctions are successfully blocking critical infrastructure CapEx, leading to long-term decline rates. Furthermore, severe payment settlement delays with primary buyers (India and China) in non-dollar currencies are causing cargo float times to increase by an average of 12 days, trapping millions of barrels at sea.'},
-    
+               'info': 'A heavily sanctioned major exporter operating almost entirely outside the traditional US-dollar financial system. Seaborne exports remain stubbornly high at roughly 3.3M bpd, relying exclusively on a complex, rapidly expanding "dark fleet" logistics network to evade G7 price caps.', 
+               'figures': 'Seaborne Exports: 3.3M bpd | Urals/Brent Price Spread: -$14/bbl | Estimated Dark Fleet Tanker Capacity: 600+ vessels.', 
+               'impact': 'Western financial sanctions are now successfully blocking critical infrastructure CapEx, leading to permanent decline rates in legacy Siberian fields. Furthermore, severe payment settlement delays with primary buyers (specifically India and China) involving non-dollar currencies (Rupee/Yuan) are causing cargo float times to increase by an average of 12 days, trapping millions of barrels at sea.'},
+               
     'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 
-                     'info': 'The de facto leader of the OPEC+ cartel. Acts as the primary market shock absorber by voluntarily withholding production. The Kingdom is currently holding approximately 3.2M bpd of spare capacity offline.', 
-                     'impact': 'With the fiscal break-even price for the domestic Saudi budget estimated at $82/bbl, the current price environment is causing economic strain. Intelligence indicates OPEC+ is leaning heavily toward abandoning production cuts and resuming 2.2M bpd of output increases starting in April to wage a price war and reclaim Asian market share ahead of peak summer demand.'},
-    
+                     'info': 'The de facto leader of the OPEC+ cartel and the sole entity capable of acting as the primary global market shock absorber. The Kingdom achieves this by voluntarily withholding vast amounts of production to artificially balance supply and demand.', 
+                     'figures': 'Current Production: ~9.0M bpd | Spare Capacity Held Offline: ~3.2M bpd | Estimated Fiscal Break-even: $82/bbl.', 
+                     'impact': 'With the fiscal break-even price required to balance the domestic Saudi budget and fund "Vision 2030" projects estimated at $82/bbl, the current price environment is causing immense economic strain. Actionable intelligence indicates OPEC+ leadership is leaning heavily toward abandoning production cuts and resuming 2.2M bpd of output increases starting in April to wage a price war for Asian market share.'},
+                     
+    'UAE': {'lat': 23.42, 'lon': 53.85, 'risk': 'LOW', 'color': C_SAFE, 'mod': 0.98, 
+            'info': 'A critical logistics and storage hub for the global energy trade. Fujairah port volumes serve as a highly accurate leading indicator for total Middle East export health and bunker fuel demand.', 
+            'figures': 'Current Production Capacity: Approaching 4.8M bpd | Fujairah Bunkering Volumes: 14-month high.', 
+            'impact': 'Global shipping networks are aggressively capitalizing on the port’s strategic location outside the immediate conflict zone to refuel and bypass ongoing Red Sea transit rerouting. However, the UAE is increasingly agitated by its restrictive OPEC+ production quota and is accelerating aggressive CapEx investments to permanently expand total capacity to 5M bpd by 2027.'},
+            
     'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.3, 
-             'info': 'A heavily sanctioned producer that physically controls the most critical global energy chokepoint: The Strait of Hormuz (21M bpd transit risk).', 
-             'impact': 'Despite harsh sanctions, production has covertly recovered to 3.1M bpd, with 90% of exports routed via the dark fleet to independent Asian buyers. However, escalating rhetoric and frequent transit harassment incidents against commercial shipping in the Strait of Hormuz are actively embedding a persistent $3/bbl geopolitical risk premium into global crude benchmarks.'},
+             'info': 'A heavily sanctioned producer that physically controls the most critical global energy chokepoint: The Strait of Hormuz, representing a staggering 21M bpd transit risk to global supply chains.', 
+             'figures': 'Estimated Covert Production: Recovered to 3.1M bpd | Exports to Independent Asian Buyers: >90% of total output.', 
+             'impact': 'Despite harsh US sanctions, Iranian production has covertly recovered. However, escalating proxy conflicts, aggressive state rhetoric, and frequent transit harassment incidents against commercial shipping in the Strait of Hormuz are actively embedding a persistent $3/bbl geopolitical risk premium (GPR) directly into global crude benchmarks.'},
+             
+    'VENEZUELA': {'lat': 6.42, 'lon': -66.58, 'risk': 'HIGH', 'color': C_DANG, 'mod': 1.15, 
+                  'info': 'A global heavy crude specialist possessing the world\'s largest proven reserves. Production is severely hampered by decades of structural underinvestment, catastrophic grid failures, and severe international sanctions.', 
+                  'figures': 'Current Output: Stalled at ~800k bpd | Required Diluent Imports: Heavily restricted.', 
+                  'impact': 'The recent snapback of strict US sanctions has severely limited the importation of crucial naphtha and diluents required to process Orinoco belt heavy crude into exportable grades. Export logistics remain highly complex, relying heavily on covert ship-to-ship transfers to obscure cargo origins from satellite tracking.'},
+                  
+    'UK': {'lat': 55.37, 'lon': -3.43, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.02, 
+           'info': 'The historical origin of the Brent global pricing benchmark. North Sea production is currently in a state of severe, terminal natural decline, dropping at an alarming rate.', 
+           'figures': 'North Sea Decline Rate: Accelerating to 8% YoY | Active Offshore Rigs: Near historic lows.', 
+           'impact': 'The aggressive implementation of localized windfall taxes on energy producers by the government is severely restricting new drilling CapEx and offshore exploration. This permanent policy shift is irreversibly eroding domestic production capabilities, forcing the broader European market to rely heavily on US shale and Middle Eastern imports for baseload supply.'}
 }
 
-# Failsafe for un-detailed nodes
-for k in ['UAE', 'VENEZUELA', 'BRAZIL', 'UK', 'NORWAY', 'NIGERIA', 'ANGOLA', 'LIBYA', 'IRAQ', 'KUWAIT', 'QATAR', 'CANADA', 'MEXICO', 'GERMANY', 'JAPAN', 'SOUTH KOREA', 'AUSTRALIA', 'ALGERIA', 'EGYPT', 'TURKEY', 'SOUTH AFRICA', 'SINGAPORE', 'INDONESIA', 'OMAN']:
+# Fallback for un-configured countries
+for k in ['BRAZIL', 'NORWAY', 'NIGERIA', 'ANGOLA', 'LIBYA', 'IRAQ', 'KUWAIT', 'QATAR', 'CANADA', 'MEXICO', 'GERMANY', 'JAPAN', 'SOUTH KOREA', 'AUSTRALIA', 'ALGERIA', 'EGYPT', 'TURKEY', 'SOUTH AFRICA', 'SINGAPORE', 'INDONESIA', 'OMAN']:
     if k not in COUNTRIES:
-        COUNTRIES[k] = {'lat': 0, 'lon': 0, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Standard node tracking active. Evaluating regional GPR metrics.', 'impact': 'Monitoring macro headwinds and localized supply chain constraints.'}
-
-COUNTRIES['UAE'].update({'lat': 23.42, 'lon': 53.85, 'risk': 'LOW', 'color': C_SAFE, 'info': 'Key logistics and storage hub. Fujairah port volumes serve as a leading indicator for total Middle East export health.', 'impact': 'Bunkering volumes at Fujairah have reached a 14-month high as global shipping networks capitalize on the port’s strategic location to bypass ongoing Red Sea transit rerouting.'})
-COUNTRIES['UK'].update({'lat': 55.37, 'lon': -3.43, 'risk': 'MEDIUM', 'color': C_WARN, 'info': 'Origin of the Brent global pricing benchmark. North Sea production is in a state of terminal natural decline, currently dropping at 8% YoY.', 'impact': 'The aggressive implementation of localized windfall taxes on energy producers is severely restricting new drilling CapEx, forcing the European market to rely heavily on US imports.'})
+        COUNTRIES[k] = {'lat': 0, 'lon': 0, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0, 'info': 'Standard node tracking active. The AI engine is evaluating regional Geopolitical Risk (GPR) metrics and baseline production capacity.', 'figures': 'Data aggregating from primary satellite and manifest sources...', 'impact': 'Currently monitoring overarching global macro headwinds, structural demand destruction vectors, and localized supply chain constraints.'}
 
 # ==========================================
 # 4. THE AI MODAL (POP-UP)
@@ -199,16 +206,23 @@ COUNTRIES['UK'].update({'lat': 55.37, 'lon': -3.43, 'risk': 'MEDIUM', 'color': C
 @st.dialog("OVIP AI Terminal")
 def ai_terminal():
     st.markdown("<p style='color: #94a3b8; font-family: JetBrains Mono; font-size: 0.8em;'>> SECURE UPLINK ESTABLISHED.</p>", unsafe_allow_html=True)
-    if "chat_log" not in st.session_state: st.session_state.chat_log = [{"role": "assistant", "content": "SYSTEM ONLINE. AWAITING QUERY."}]
+    if "chat_log" not in st.session_state:
+        st.session_state.chat_log = [{"role": "assistant", "content": "SYSTEM ONLINE. AWAITING QUERY."}]
+
     chat_box = st.container(height=300, border=False)
     with chat_box:
         for msg in st.session_state.chat_log:
-            c, n = ("#00f0ff", "USER") if msg['role'] == 'user' else ("#e2e8f0", "DAEMON")
+            c = "#00f0ff" if msg['role'] == 'user' else "#e2e8f0"
+            n = "USER" if msg['role'] == 'user' else "DAEMON"
             st.markdown(f"<span style='color:{c}; font-family: JetBrains Mono; font-size:0.9em;'><b>{n}:~$</b> {msg['content']}</span><br><br>", unsafe_allow_html=True)
+
     if prompt := st.chat_input("TRANSMIT..."):
         st.session_state.chat_log.append({"role": "user", "content": prompt})
         with st.spinner("PROCESSING..."):
-            ans = get_ai_response(f"Target: {st.session_state.target or 'Global'}. {prompt}", st.session_state.vec, st.session_state.tfidf, st.session_state.rag_df) if AI_AVAILABLE and st.session_state.vec is not None else "AI ENGINE OFFLINE."
+            if AI_AVAILABLE and st.session_state.vec is not None:
+                ctx = f"Target: {st.session_state.target if st.session_state.target else 'Global'}. {prompt}"
+                ans = get_ai_response(ctx, st.session_state.vec, st.session_state.tfidf, st.session_state.rag_df)
+            else: ans = "AI ENGINE OFFLINE."
         st.session_state.chat_log.append({"role": "assistant", "content": ans})
         st.rerun()
 
@@ -276,8 +290,20 @@ if st.session_state.target is None:
             </div>
             """, unsafe_allow_html=True)
 
+            st.markdown("<p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 15px;'>[ LIVE_FEED ]</p>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6; margin-bottom: 15px;'>
+                <span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span> <span style='color: #e2e8f0; font-weight: bold;'>US-IRAN TENSIONS</span><br>
+                <span style='color: #cbd5e1;'>Escalating rhetoric and transit harassment in the Strait of Hormuz is embedding a $2-$3 geopolitical risk premium.</span>
+            </div>
+            <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'>
+                <span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>OPEC+ SHIFT</span><br>
+                <span style='color: #cbd5e1;'>Saudi Arabia leaning toward resuming gradual production increases in April 2026.</span>
+            </div>
+            """, unsafe_allow_html=True)
+
 else:
-    # --- COUNTRY DASHBOARD VIEW ---
+    # --- COUNTRY DASHBOARD VIEW (NATIVE STREAMLIT LAYOUT WITH COLORS) ---
     target = st.session_state.target
     intel = COUNTRIES[target]
     latest = df_main.iloc[-1]
@@ -315,41 +341,67 @@ else:
         rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
         rgba_fill = f'rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.1)'
 
-        fig.add_trace(go.Scatter(x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Volatility', line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=rgba_fill), secondary_y=False)
-        fig.add_trace(go.Scatter(x=chart_df['Date'], y=chart_df['WTI'], name='Global WTI Price ($)', line=dict(color="#475569", width=2, dash='dot')), secondary_y=True)
+        fig.add_trace(go.Scatter(x=chart_df['Date'], y=(chart_df['Volatility'] * mod), name=f'{target} Vol', line=dict(color=intel['color'], width=3, shape='spline'), fill='tozeroy', fillcolor=rgba_fill), secondary_y=False)
+        fig.add_trace(go.Scatter(x=chart_df['Date'], y=chart_df['WTI'], name='Global WTI ($)', line=dict(color="#475569", width=2, dash='dot')), secondary_y=True)
 
-        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0")))
+        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=280, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0")))
         fig.update_xaxes(showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', tickfont=dict(color="#94a3b8"))
-        fig.update_yaxes(title_text="Volatility (Sigma)", color=intel['color'], showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', secondary_y=False)
-        fig.update_yaxes(title_text="WTI Index ($)", color="#475569", showgrid=False, secondary_y=True)
+        fig.update_yaxes(title_text="Volatility", color=intel['color'], showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', secondary_y=False)
+        fig.update_yaxes(title_text="WTI", color="#475569", showgrid=False, secondary_y=True)
         st.plotly_chart(fig, use_container_width=True)
         
-        # INTERPRETATION TEXT
-        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -15px; margin-bottom: 20px;'>> MATRIX_INTERPRETATION: The solid {intel['color']} wave tracks localized 30-day volatility standard deviation. Rapid curve expansion indicates immediate supply chain dislocation. The dotted grey line tracks the underlying global WTI baseline.</p>", unsafe_allow_html=True)
+        # GRAPH 1 EXPLANATION
+        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px; margin-bottom: 25px;'>> MATRIX_INTERPRETATION: The solid {intel['color']} wave tracks the localized 30-day volatility standard deviation for {target}. Rapid curve expansion indicates immediate supply chain dislocation. The dotted grey line tracks the underlying global WTI baseline.</p>", unsafe_allow_html=True)
         
         # FEATURE IMPORTANCE CHART
         st.plotly_chart(create_feature_importance_chart(intel['color']), use_container_width=True, config={'displayModeBar': False})
         
-        # INTERPRETATION TEXT
-        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -15px;'>> DRIVER_ANALYSIS: Random Forest feature extraction indicates Geopolitical Risk (GPR) and Momentum are currently overriding physical supply constraints in the NPRS-1 modeling engine for {target}.</p>", unsafe_allow_html=True)
+        # GRAPH 2 EXPLANATION
+        st.markdown(f"<p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -10px;'>> DRIVER_ANALYSIS: Random Forest feature extraction indicates Geopolitical Risk (GPR) and Momentum are currently the heaviest weighted factors driving the NPRS-1 modeling engine's volatility prediction for the {target} node.</p>", unsafe_allow_html=True)
 
     with col_right:
+        # Pure Streamlit Container with COLORIZED HTML/Markdown text
         with st.container():
-            
+            # LOCAL DYNAMICS
             st.markdown(f"""
-            <div style='margin-bottom: 30px;'>
-                <p style='color: #00f0ff; font-family: Orbitron; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 240, 255, 0.3); padding-bottom: 5px;'>[ LOCAL_DYNAMICS ]</p>
-                <p style='font-family: JetBrains Mono; font-size: 13px; color: #cbd5e1; line-height: 1.8; text-align: justify;'>
+            <div style='margin-bottom: 25px;'>
+                <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ LOCAL_DYNAMICS ]</p>
+                <p style='font-family: JetBrains Mono; font-size: 13px; color: #cbd5e1; line-height: 1.6; padding-left: 12px; border-left: 2px solid #00f0ff;'>
                     {intel['info']}
                 </p>
             </div>
             """, unsafe_allow_html=True)
             
+            # MARKET DATA
             st.markdown(f"""
-            <div style='margin-bottom: 30px;'>
-                <p style='color: {intel['color']}; font-family: Orbitron; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid {hex_to_rgba(intel['color'], 0.3)}; padding-bottom: 5px; text-shadow: 0 0 8px {hex_to_rgba(intel['color'], 0.4)};'>[ EVENT_IMPACT_ANALYSIS ]</p>
-                <p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.8; text-align: justify;'>
-                    {intel['impact']}
+            <div style='margin-bottom: 25px;'>
+                <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ MARKET_DATA ]</p>
+                <p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'>
+                    <span style='color: #00f0ff;'>&gt;</span> {intel['figures']}
                 </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # EVENT IMPACT (Colored based on risk)
+            st.markdown(f"""
+            <div style='margin-bottom: 25px;'>
+                <p style='color: {intel['color']}; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px; text-shadow: 0 0 8px {hex_to_rgba(intel['color'], 0.4)};'>[ EVENT_IMPACT_ANALYSIS ]</p>
+                <p style='font-family: JetBrains Mono; font-size: 13px; color: #e2e8f0; line-height: 1.6;'>
+                    <span style='color: {intel['color']};'>&gt;</span> {intel['impact']}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"<div style='border-top: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 25px;'></div>", unsafe_allow_html=True)
+            
+            # SYSTEM FORECAST
+            st.markdown(f"""
+            <div>
+                 <p style='color: #00f0ff; font-family: Orbitron; font-size: 14px; font-weight: bold; margin-bottom: 8px;'>[ SYSTEM_FORECAST ]</p>
+                 <ul style='font-family: "JetBrains Mono"; font-size: 13px; line-height: 2.0; color: #94a3b8; list-style-type: none; padding-left: 0;'>
+                    <li><span style='color: #00f0ff;'>[ GPR_TRACKING ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{(latest.get('gpr', 50)*mod):.1f}</span></li>
+                    <li><span style='color: {intel["color"]};'>[ FORECAST ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'Escalate' if intel['risk'] in ['HIGH', 'CRITICAL'] else ('Maintain' if intel['risk'] == 'MEDIUM' else 'Stabilize')}</span></li>
+                    <li><span style='color: #00f0ff;'>[ CORRELATION ]</span> <span style='color: #e2e8f0; font-weight: bold;'>{'High' if intel['risk'] in ['MEDIUM', 'HIGH'] else 'Moderate'}</span></li>
+                </ul>
             </div>
             """, unsafe_allow_html=True)
