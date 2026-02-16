@@ -28,14 +28,14 @@ st.markdown("""
         height: 100vh !important;
     }
     
-    /* SAFE MARGINS to ensure top text/graphs don't get cut off */
+    /* SAFE MARGINS: Pushes everything perfectly to the top without cutting text */
     .block-container {
-        padding-top: 1.5rem !important; 
+        padding-top: 2rem !important; 
         padding-bottom: 0rem !important;
         padding-left: 2rem !important;
-        padding-right: 2rem !important;
+        padding-right: 1rem !important;
         max-width: 100% !important;
-        margin-top: -30px !important; 
+        margin-top: -50px !important; 
     }
     header {visibility: hidden;}
 
@@ -46,13 +46,18 @@ st.markdown("""
         z-index: 999; background-size: 100% 4px; pointer-events: none;
     }
 
+    @keyframes slideUpFade {
+        0% { opacity: 0; transform: translateY(10px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+    
     .animated-panel {
-        background: rgba(10, 15, 30, 0.8); 
-        border: 1px solid rgba(0, 240, 255, 0.3); 
+        animation: slideUpFade 0.4s ease-out forwards;
+        background: rgba(10, 15, 30, 0.6); 
+        border: 1px solid rgba(0, 240, 255, 0.2); 
         border-radius: 4px; 
-        padding: 12px;
+        padding: 15px;
         backdrop-filter: blur(5px);
-        box-shadow: 0 0 10px rgba(0, 240, 255, 0.05);
     }
 
     h1, h2, h3, h4 {
@@ -73,7 +78,7 @@ st.markdown("""
     [data-testid="stMetricLabel"] { color: #94a3b8 !important; }
 
     .stButton>button {
-        background: rgba(0, 240, 255, 0.1) !important;
+        background: rgba(0, 240, 255, 0.05) !important;
         color: #00f0ff !important;
         border: 1px solid #00f0ff !important;
         border-radius: 2px !important;
@@ -89,9 +94,10 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
     }
     
+    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #00f0ff; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -106,14 +112,11 @@ def load_data():
             try:
                 df = pd.read_csv(f)
                 df['Date'] = pd.to_datetime(df['Date'])
-                if 'Score' not in df.columns:
-                    df['Score'] = np.random.normal(0, 1, len(df))
                 return df
             except Exception: pass
     
     dates = pd.date_range(end=pd.Timestamp.today(), periods=150)
-    score = np.sin(np.linspace(0, 4*np.pi, 150)) + np.random.normal(0, 0.5, 150) 
-    return pd.DataFrame({'Date': dates, 'WTI': np.random.normal(75, 2, 150), 'Volatility': np.random.normal(0.15, 0.02, 150), 'Score': score, 'Crisis_Prob': np.zeros(150), 'gpr': np.random.rand(150)*100})
+    return pd.DataFrame({'Date': dates, 'WTI': np.random.normal(75, 2, 150), 'Volatility': np.random.normal(0.15, 0.02, 150), 'Crisis_Prob': np.zeros(150), 'gpr': np.random.rand(150)*100})
 
 df_main = load_data()
 
@@ -126,18 +129,6 @@ if 'rag_setup' not in st.session_state:
 def hex_to_rgba(hex_code, alpha=0.1):
     hex_code = hex_code.lstrip('#')
     return f'rgba({int(hex_code[0:2], 16)},{int(hex_code[2:4], 16)},{int(hex_code[4:6], 16)},{alpha})'
-
-def create_sentiment_chart(data, height=100):
-    fig = go.Figure()
-    colors = ['#00f0ff' if val >= 0 else '#ff003c' for val in data['Score']]
-    fig.add_trace(go.Bar(x=data['Date'], y=data['Score'], marker_color=colors, marker_line_width=0))
-    fig.update_layout(
-        height=height, margin=dict(l=0, r=0, t=10, b=0),
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False,
-        xaxis=dict(showgrid=False, visible=False), 
-        yaxis=dict(showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', visible=True, zeroline=True, zerolinecolor='rgba(255,255,255,0.2)', tickfont=dict(color="#94a3b8", size=10)),
-    )
-    return fig
 
 # ==========================================
 # 3. GLOBAL NODE DATABASE
@@ -167,11 +158,11 @@ COUNTRIES = {
                'vuln': 'Western financial sanctions blocking infrastructure CapEx.'},
     'SAUDI ARABIA': {'lat': 23.89, 'lon': 45.08, 'risk': 'MEDIUM', 'color': C_WARN, 'mod': 1.0,
                      'info': 'De facto OPEC+ leader. ~3M bpd spare capacity acts as market shock absorber.',
-                     'catalyst': 'OPEC+ voluntary cuts maintained to defend price floor.',
+                     'catalyst': 'OPEC+ leaning toward resuming output increases in April 2026.',
                      'vuln': 'Fiscal break-even price remains elevated above $80/bbl.'},
     'IRAN': {'lat': 32.42, 'lon': 53.68, 'risk': 'CRITICAL', 'color': C_DANG, 'mod': 1.3,
              'info': 'Sanctioned producer utilizing dark fleet logistics.',
-             'catalyst': 'Strait of Hormuz transit harassment incidents escalating.',
+             'catalyst': 'Strait of Hormuz transit harassment incidents escalating risk premiums.',
              'vuln': 'Regime instability and severe economic sanctions.'}
 }
 
@@ -189,137 +180,126 @@ COUNTRIES['UK'].update({'lat': 55.37, 'lon': -3.43, 'color': C_WARN})
 @st.dialog("OVIP AI Terminal")
 def ai_terminal():
     st.markdown("<p style='color: #94a3b8; font-family: JetBrains Mono; font-size: 0.8em;'>> SECURE UPLINK ESTABLISHED.</p>", unsafe_allow_html=True)
-    if "chat_log" not in st.session_state:
-        st.session_state.chat_log = [{"role": "assistant", "content": "SYSTEM ONLINE. AWAITING QUERY."}]
-
+    if "chat_log" not in st.session_state: st.session_state.chat_log = [{"role": "assistant", "content": "SYSTEM ONLINE. AWAITING QUERY."}]
     chat_box = st.container(height=300, border=False)
     with chat_box:
         for msg in st.session_state.chat_log:
-            c = "#00f0ff" if msg['role'] == 'user' else "#e2e8f0"
-            n = "USER" if msg['role'] == 'user' else "DAEMON"
+            c, n = ("#00f0ff", "USER") if msg['role'] == 'user' else ("#e2e8f0", "DAEMON")
             st.markdown(f"<span style='color:{c}; font-family: JetBrains Mono; font-size:0.9em;'><b>{n}:~$</b> {msg['content']}</span><br><br>", unsafe_allow_html=True)
-
     if prompt := st.chat_input("TRANSMIT..."):
         st.session_state.chat_log.append({"role": "user", "content": prompt})
         with st.spinner("PROCESSING..."):
-            if AI_AVAILABLE and st.session_state.vec is not None:
-                ctx = f"Target: {st.session_state.target if st.session_state.target else 'Global'}. {prompt}"
-                ans = get_ai_response(ctx, st.session_state.vec, st.session_state.tfidf, st.session_state.rag_df)
-            else: ans = "AI ENGINE OFFLINE."
+            ans = get_ai_response(f"Target: {st.session_state.target or 'Global'}. {prompt}", st.session_state.vec, st.session_state.tfidf, st.session_state.rag_df) if AI_AVAILABLE and st.session_state.vec is not None else "AI ENGINE OFFLINE."
         st.session_state.chat_log.append({"role": "assistant", "content": ans})
         st.rerun()
 
 # ==========================================
 # 5. MAIN VIEW: ROUTER
 # ==========================================
-if st.session_state.target is None:
-    # --- RESTORED HUGE GLOBE HOME SCREEN WITH TOP HUDS ---
-    
-    # TOP HUD ROW: Title, Sentiment Graph, Event Text, AI Button
-    c_head, c_sent, c_events, c_btn = st.columns([2.5, 3.5, 4.5, 1.5]) 
-    
-    with c_head:
-        st.markdown("<h2 style='margin-top: 15px; font-size: 1.8rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 12px; margin-top: -5px;'>> AWAITING_TARGET_SELECTION</p>", unsafe_allow_html=True)
-    
-    with c_sent:
-        st.markdown("<div class='animated-panel' style='height: 110px; padding: 5px 10px;'>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#00f0ff; font-family: Orbitron; font-size: 10px; margin: 0;'>[ NLP_SENTIMENT_INDEX ]</p>", unsafe_allow_html=True)
-        st.plotly_chart(create_sentiment_chart(df_main.tail(60), height=80), use_container_width=True, config={'displayModeBar': False})
-        st.markdown("</div>", unsafe_allow_html=True)
 
-    with c_events:
-        st.markdown("<div class='animated-panel' style='height: 110px; padding: 5px 10px; overflow-y: auto;'>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#00f0ff; font-family: Orbitron; font-size: 10px; margin: 0;'>[ LIVE_MACRO_EVENTS ]</p>", unsafe_allow_html=True)
+# Clean Top Header (No empty boxes)
+c_head, c_gap, c_btn = st.columns([6, 2, 1.5]) 
+with c_head:
+    st.markdown("<h2 style='margin-top: 15px; font-size: 2rem;'>GLOBAL_THREAT_MATRIX</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 13px; margin-top: -5px;'>> SELECT_TARGET_NODE</p>", unsafe_allow_html=True)
+with c_btn:
+    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+    if st.button("💬 OVIP AI UPLINK", use_container_width=True): ai_terminal()
+
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
+if st.session_state.target is None:
+    # --- HOME VIEW: GIANT GLOBE (LEFT) + THIN NEWS FEED (RIGHT) ---
+    c_globe, c_news = st.columns([7.5, 2.5]) # 75% Globe, 25% News Feed
+    
+    with c_globe:
+        lats = [v['lat'] for v in COUNTRIES.values()]
+        lons = [v['lon'] for v in COUNTRIES.values()]
+        names = list(COUNTRIES.keys())
+        colors = [v['color'] for v in COUNTRIES.values()]
+        
+        fig_globe = go.Figure(go.Scattergeo(
+            lon = lons, lat = lats, text = names, mode = 'markers+text',
+            marker = dict(size=14, color=colors, line=dict(width=1, color='#050810')),
+            textfont = dict(family="JetBrains Mono", size=12, color=colors), textposition = "top center"
+        ))
+        
+        fig_globe.update_geos(
+            projection_type="orthographic", showcoastlines=True, coastlinecolor="#1e3a8a", 
+            showland=True, landcolor="#0f172a", showocean=True, oceancolor="#020617",         
+            showcountries=True, countrycolor="#1e293b", bgcolor="rgba(0,0,0,0)",
+            center=dict(lon=78.96, lat=20.59), projection_rotation=dict(lon=78.96, lat=20.59, roll=0)
+        )
+        
+        fig_globe.update_layout(height=680, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        event = st.plotly_chart(fig_globe, on_select="rerun", selection_mode="points", use_container_width=True)
+        
+        if event and "selection" in event and event["selection"]["points"]:
+            st.session_state.target = names[event["selection"]["points"][0]["point_index"]]
+            st.rerun()
+
+    with c_news:
+        st.markdown("<div class='animated-panel' style='height: 650px; overflow-y: auto; padding: 20px;'>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color:#00f0ff; border-bottom: 1px solid rgba(0,240,255,0.3); padding-bottom: 10px; font-size: 1.1rem;'>LIVE_MACRO_FEED</h4>", unsafe_allow_html=True)
+        
         st.markdown("""
-        <div style='font-family: JetBrains Mono; font-size: 11px; color: #cbd5e1; line-height: 1.4; margin-top: 5px;'>
-            <span style='color: #ff003c;'>[CRITICAL] U.S. TARIFFS:</span> WTI transport premiums spiked 14%. Volatility accelerating.<br>
-            <span style='color: #ffd700;'>[WARNING] OPEC+ QUOTAS:</span> Hard floor established, suppressing downside action.
+        <div style='font-family: JetBrains Mono; font-size: 12px; line-height: 1.6;'>
+            
+            <div style='margin-top: 15px; margin-bottom: 20px;'>
+                <span style='color: #ff003c; font-weight: bold; font-family: Orbitron;'>[ CRITICAL ]</span><br>
+                <span style='color: #e2e8f0;'><b>US-IRAN TENSIONS:</b> Escalating rhetoric and transit harassment in the Strait of Hormuz is actively embedding a $2-$3 geopolitical risk premium into Brent crude pricing.</span>
+            </div>
+
+            <div style='margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
+                <span style='color: #ffd700; font-weight: bold; font-family: Orbitron;'>[ WARNING ]</span><br>
+                <span style='color: #e2e8f0;'><b>OPEC+ POLICY SHIFT:</b> Saudi Arabia and the UAE are reportedly leaning toward resuming gradual production increases starting in April 2026 to reclaim market share ahead of summer demand.</span>
+            </div>
+
+            <div style='margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
+                <span style='color: #00f0ff; font-weight: bold; font-family: Orbitron;'>[ UPDATE ]</span><br>
+                <span style='color: #e2e8f0;'><b>IEA OVERSUPPLY FORECAST:</b> The IEA reports global oil inventories swelled by an extraordinary 477 million barrels last year. A severe supply glut is projected through late 2026, led by non-OPEC output.</span>
+            </div>
+            
+            <div style='border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;'>
+                <span style='color: #00ff41; font-weight: bold; font-family: Orbitron;'>[ MACRO ]</span><br>
+                <span style='color: #e2e8f0;'><b>INFLATION DATA:</b> Softer U.S. inflation data this week has eased broader macroeconomic concerns, partially offsetting the bearish sentiment from rising global supply.</span>
+            </div>
+
         </div>
         """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
-        
-    with c_btn:
-        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-        if st.button("💬 OVIP AI UPLINK", use_container_width=True): ai_terminal()
-    
-    # GIANT CENTERED GLOBE
-    lats = [v['lat'] for v in COUNTRIES.values()]
-    lons = [v['lon'] for v in COUNTRIES.values()]
-    names = list(COUNTRIES.keys())
-    colors = [v['color'] for v in COUNTRIES.values()]
-    
-    fig_globe = go.Figure(go.Scattergeo(
-        lon = lons, lat = lats, text = names, mode = 'markers+text',
-        marker = dict(size=14, color=colors, line=dict(width=1, color='#050810')),
-        textfont = dict(family="JetBrains Mono", size=12, color=colors), textposition = "top center"
-    ))
-    
-    fig_globe.update_geos(
-        projection_type="orthographic", showcoastlines=True, coastlinecolor="#1e3a8a", 
-        showland=True, landcolor="#0f172a", showocean=True, oceancolor="#020617",         
-        showcountries=True, countrycolor="#1e293b", bgcolor="rgba(0,0,0,0)",
-        center=dict(lon=78.96, lat=20.59), projection_rotation=dict(lon=78.96, lat=20.59, roll=0)
-    )
-    
-    # Set height large so it dominates the screen, negative top margin to pull it up
-    fig_globe.update_layout(height=650, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-    
-    event = st.plotly_chart(fig_globe, on_select="rerun", selection_mode="points", use_container_width=True)
-    if event and "selection" in event and event["selection"]["points"]:
-        st.session_state.target = names[event["selection"]["points"][0]["point_index"]]
-        st.rerun()
 
 else:
-    # --- COUNTRY DASHBOARD VIEW (DENSE LAYOUT) ---
+    # --- COUNTRY DASHBOARD VIEW (NO SENTIMENT GRAPH) ---
     target = st.session_state.target
     intel = COUNTRIES.get(target, COUNTRIES['USA'])
     latest = df_main.iloc[-1]
     mod = intel['mod']
     
-    st.markdown(f"<p style='color:#94a3b8; font-family: JetBrains Mono; font-size: 14px; margin-top: 5px;'>> UPLINK_ESTABLISHED: <span style='color:{intel['color']}; font-weight:bold; font-size:1.4rem;'>NODE::{target}</span></p>", unsafe_allow_html=True)
-    
-    # Top buttons for Country View
-    c_b1, c_b2, c_b3 = st.columns([2, 2, 8])
-    with c_b1: 
-        if st.button("← RETURN TO GLOBE"): st.session_state.target = None; st.rerun()
-    with c_b2:
-        if st.button("💬 OVIP AI UPLINK"): ai_terminal()
-        
-    st.write("")
-    
-    # Row 1: Event Impact & Sentiment Graph
-    c_ev, c_sent = st.columns([1.5, 1])
-    
-    with c_ev:
-        st.markdown("<div class='animated-panel' style='height: 180px; overflow-y: auto; margin-bottom: 10px;'>", unsafe_allow_html=True)
-        st.markdown(f"<h4 style='color:{intel['color']}; border-bottom: 1px solid {hex_to_rgba(intel['color'], 0.3)}; padding-bottom: 5px;'>LOCALIZED_EVENT_IMPACT</h4>", unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style='font-family: JetBrains Mono; font-size: 13px; color: #cbd5e1; line-height: 1.6; margin-top: 10px;'>
-            <span style='color: {intel['color']}; font-weight: bold;'>[CATALYST_DETECTED]:</span> {intel['catalyst']}<br><br>
-            <span style='color: #00f0ff; font-weight: bold;'>[VULNERABILITY_MATRIX]:</span> {intel['vuln']}<br>
+    # Metrics Row
+    st.markdown("<div class='animated-panel' style='margin-bottom: 15px; margin-top: 5px; padding: 10px 20px;'>", unsafe_allow_html=True)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("WTI_PREMIUM (ADJ)", f"${(latest.get('WTI', 75) * mod):.2f}")
+    m2.metric("LOCAL_VOL_SIGMA", f"{(latest.get('Volatility', 0.1) * mod):.3f}")
+    m3.metric("GPR_INDEX", f"{(latest.get('gpr', 50) * mod):.1f}")
+    m4.markdown(f"""
+        <div style="display: flex; flex-direction: column;">
+            <span style="color: #94a3b8; font-size: 14px; margin-bottom: 4px;">THREAT_LEVEL</span>
+            <span style="color: {intel['color']}; font-family: 'Orbitron'; font-size: 1.8rem; font-weight: 700; text-shadow: 0 0 10px {intel['color']};">{intel['risk']}</span>
         </div>
-        """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    with c_sent:
-        st.markdown("<div class='animated-panel' style='height: 180px; margin-bottom: 10px;'>", unsafe_allow_html=True)
-        st.markdown("<h4 style='margin-bottom: 5px;'>REGIONAL_SENTIMENT</h4>", unsafe_allow_html=True)
-        loc_df = df_main.tail(40).copy()
-        loc_df['Score'] = loc_df['Score'] * (2 - mod)
-        st.plotly_chart(create_sentiment_chart(loc_df, height=120), use_container_width=True, config={'displayModeBar': False})
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # Row 2: Main Volatility Matrix & Intelligence
+    # Content Row: Matrix (Left) & Intel (Right)
     col_chart, col_intel = st.columns([2.5, 1])
 
     with col_chart:
-        st.markdown("<div class='animated-panel' style='height: 420px;'>", unsafe_allow_html=True)
+        st.markdown("<div class='animated-panel' style='height: 450px;'>", unsafe_allow_html=True)
         st.markdown(f"<h4 style='color:#00f0ff;'>VOLATILITY_IMPACT_MATRIX</h4>", unsafe_allow_html=True)
         
         st.markdown("""
         <p style='color: #64748b; font-family: JetBrains Mono; font-size: 11px; margin-top: -5px; margin-bottom: 10px;'>
-        > INDICATOR: Annualized 30-day standard deviation of WTI daily returns. Rapid curve expansion indicates severe supply chain dislocation or macro shocks.
+        > INDICATOR: Annualized 30-day standard deviation of WTI daily returns. Rapid curve expansion indicates severe supply chain dislocation.
         </p>
         """, unsafe_allow_html=True)
         
@@ -336,7 +316,7 @@ else:
 
         fig.update_layout(
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            height=280, margin=dict(l=0, r=0, t=10, b=0),
+            height=320, margin=dict(l=0, r=0, t=10, b=0),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0"))
         )
         fig.update_xaxes(showgrid=True, gridcolor='rgba(0, 240, 255, 0.1)', tickfont=dict(color="#94a3b8"))
@@ -346,7 +326,7 @@ else:
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_intel:
-        st.markdown("<div class='animated-panel' style='height: 420px; overflow-y: auto;'>", unsafe_allow_html=True)
+        st.markdown("<div class='animated-panel' style='height: 450px; overflow-y: auto;'>", unsafe_allow_html=True)
         st.markdown(f"<h4 style='color:#00f0ff; border-bottom: 1px solid rgba(0, 240, 255, 0.3); padding-bottom: 10px;'>DEEP_INTEL</h4>", unsafe_allow_html=True)
         
         st.markdown(f"""
@@ -357,14 +337,17 @@ else:
             </p>
         </div>
         <div style='border-top: 1px solid rgba(0, 240, 255, 0.2); margin: 15px 0;'></div>
+        
+        <div style='margin-bottom: 15px;'>
+            <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron"; margin-bottom: 5px;'>[ CATALYST ]</p>
+            <p style='font-family: "JetBrains Mono"; font-size: 12px; line-height: 1.5; color: #94a3b8;'>{intel['catalyst']}</p>
+        </div>
+
+        <div style='border-top: 1px solid rgba(0, 240, 255, 0.2); margin: 15px 0;'></div>
+
         <div>
-            <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron";'>[ DRIVERS ]</p>
-            <ul style='font-family: "JetBrains Mono"; font-size: 13px; line-height: 2.0; color: #94a3b8; padding-left: 15px;'>
-                <li><b>GPR_TRACKING:</b> <span style='color: #00f0ff;'>{(latest.get('gpr', 50)*mod):.1f}</span></li>
-                <li><b>WTI_PREMIUM:</b> <span style='color: #00f0ff;'>${(latest.get('WTI', 75)*mod):.2f}</span></li>
-                <li><b>VOL_SIGMA:</b> <span style='color: #00f0ff;'>{(latest.get('Volatility', 0.1)*mod):.3f}</span></li>
-                <li><b>72H_FORECAST:</b> <span style='color: {intel["color"]};'>{'Escalate' if intel['risk'] in ['HIGH', 'CRITICAL'] else ('Maintain' if intel['risk'] == 'MEDIUM' else 'Stabilize')}</span></li>
-            </ul>
+            <p style='color: #00f0ff; font-weight: 700; font-size: 1em; font-family: "Orbitron"; margin-bottom: 5px;'>[ VULNERABILITY ]</p>
+            <p style='font-family: "JetBrains Mono"; font-size: 12px; line-height: 1.5; color: #94a3b8;'>{intel['vuln']}</p>
         </div>
         """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
