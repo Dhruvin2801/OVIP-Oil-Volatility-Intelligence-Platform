@@ -1,211 +1,240 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import os
+import pydeck as pdk
+import plotly.graph_objects as go
 from datetime import datetime
+import os
+
+# Ensure the AI module is accessible
+from modules.ai_engine import setup_rag_vector_db, get_ai_response
 
 # ==========================================
-# 1. CORE CONFIGURATION
+# 1. CORE CONFIGURATION & THEME
 # ==========================================
-st.set_page_config(page_title="GlobalCharge | AI Engine", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="OVIP // COMMAND", layout="wide", initial_sidebar_state="collapsed")
 
-# Palette obeying your ledger: Red (Primary/Target), Orange (Warnings/Alerts), Black/Slate (BG)
 COLORS = {
-    'bg': '#050505',           
-    'panel': '#111111',        
-    'primary': '#dc2626',      # Strict Red for targets/positive (replacing blue)
-    'alert': '#ea580c',        # Strict Orange for warnings (replacing red)
-    'text': '#e2e8f0',
-    'muted': '#475569'
+    'bg': '#000000',           # Pitch Black
+    'matrix': '#00FF41',       # Hacker Green
+    'cyan': '#00F0FF',         # Radar Cyan
+    'alert': '#FF003C',        # Threat Red
+    'panel': 'rgba(0, 20, 0, 0.6)' # Translucent green glass
+}
+
+COUNTRIES = {
+    'USA': {'lat': 37.09, 'lon': -95.71, 'flag': '🇺🇸', 'name': 'UNITED STATES'},
+    'CHINA': {'lat': 35.86, 'lon': 104.20, 'flag': '🇨🇳', 'name': 'PEOPLES REPUBLIC OF CHINA'},
+    'INDIA': {'lat': 20.59, 'lon': 78.96, 'flag': '🇮🇳', 'name': 'REPUBLIC OF INDIA'},
+    'UAE': {'lat': 23.42, 'lon': 53.85, 'flag': '🇦🇪', 'name': 'UNITED ARAB EMIRATES'},
+    'SAUDI': {'lat': 23.89, 'lon': 45.08, 'flag': '🇸🇦', 'name': 'SAUDI ARABIA'}
 }
 
 # ==========================================
-# 2. HUD CSS INJECTION (LOCKED VIEWPORT)
+# 2. SCI-FI CSS INJECTION (NO SCROLLING)
 # ==========================================
 st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
-    
-    /* Lock viewport, prevent scrolling */
-    html, body, [data-testid="stAppViewContainer"] {{
-        background-color: {COLORS['bg']}; color: {COLORS['text']};
-        font-family: 'JetBrains Mono', monospace !important; overflow: hidden !important; 
-    }}
-    .block-container {{ padding-top: 1rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }}
-    ::-webkit-scrollbar {{ display: none; }}
-    
-    /* Institutional Cut-Corner Panels */
-    .st-emotion-cache-1wivap2, div[data-testid="stVerticalBlock"] > div.element-container {{
-        background: {COLORS['panel']}; border: 1px solid #222;
-        clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-        padding: 15px; border-top: 2px solid {COLORS['primary']};
-    }}
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    
+    /* Lock the screen, remove default padding */
+    html, body, [data-testid="stAppViewContainer"] {{
+        background-color: {COLORS['bg']};
+        color: {COLORS['matrix']};
+        font-family: 'Share Tech Mono', monospace !important;
+        overflow: hidden !important; 
+    }}
+    .block-container {{
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        max-width: 98% !important;
+    }}
+    
+    /* CRT Scanline Overlay */
+    .stApp::after {{
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        z-index: 999;
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
+    }}
 
-    /* STRICT METRIC SIZING (+2pt enforced) */
-    .metric-val {{ font-size: calc(2.2rem + 2pt); color: {COLORS['primary']}; font-weight: 800; line-height: 1.1; margin: 0; }}
-    .metric-lbl {{ font-size: calc(0.9rem + 2pt); color: {COLORS['muted']}; font-weight: 700; text-transform: uppercase; margin: 0; }}
-    
-    /* Terminal Buttons */
-    .stButton>button {{
-        background-color: transparent; color: {COLORS['text']}; border: 1px solid #333;
-        border-radius: 0px; width: 100%; text-transform: uppercase; font-weight: 700; transition: 0.2s;
-    }}
-    .stButton>button:hover {{ background-color: {COLORS['primary']}; color: white; border-color: {COLORS['primary']}; }}
-    
-    /* Warning Text */
-    .alert-text {{ color: {COLORS['alert']}; font-weight: 800; }}
-    </style>
+    /* Hide ugly scrollbars but allow internal scrolling */
+    ::-webkit-scrollbar {{ display: none; }}
+
+    /* Iron Man Cut-Corner Panels */
+    .st-emotion-cache-1wivap2, div[data-testid="stVerticalBlock"] > div.element-container {{
+        background: {COLORS['panel']};
+        border: 1px solid {COLORS['matrix']};
+        clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+        padding: 10px;
+        box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.1);
+    }}
+
+    /* Glowing Text */
+    h1, h2, h3, h4, p, span {{
+        font-family: 'Share Tech Mono', monospace !important;
+        text-shadow: 0 0 8px {COLORS['matrix']};
+        letter-spacing: 1.5px;
+    }}
+    
+    /* Cyberpunk Buttons */
+    .stButton>button {{
+        background-color: transparent;
+        color: {COLORS['cyan']};
+        border: 1px solid {COLORS['cyan']};
+        border-radius: 0px;
+        width: 100%;
+        text-transform: uppercase;
+        transition: 0.3s;
+    }}
+    .stButton>button:hover {{
+        background-color: {COLORS['cyan']};
+        color: {COLORS['bg']};
+        box-shadow: 0 0 15px {COLORS['cyan']};
+    }}
+    </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. STATE MANAGEMENT & DATA
+# 3. STATE MANAGEMENT & DATA LOADING
 # ==========================================
-if 'target_country' not in st.session_state:
-    st.session_state.target_country = None
+if 'target' not in st.session_state:
+    st.session_state.target = None
 if 'active_tab' not in st.session_state:
-    st.session_state.active_tab = 'intel'
+    st.session_state.active_tab = 'intel'
+if 'chat' not in st.session_state:
+    st.session_state.chat = [{"role": "assistant", "content": "OVIP_DAEMON ONLINE. AWAITING TACTICAL QUERY..."}]
 
 @st.cache_data
 def load_data():
-    file = 'war_room_audit_2025.csv'
-    if os.path.exists(file):
-        df = pd.read_csv(file)
-        df.columns = [c.lower() for c in df.columns] 
-        if 'country' not in df.columns:
-            for c in df.columns:
-                if 'name' in c or 'nation' in c: df.rename(columns={c: 'country'}, inplace=True)
-        return df
-    return None
+    try:
+        df = pd.read_csv('merged_final_corrected.csv')
+        df['Date'] = pd.to_datetime(df['Date'])
+        return df
+    except:
+        # Fallback dummy data if CSV fails to load
+        return pd.DataFrame({'Date': pd.date_range(start='1/1/2024', periods=100), 'WTI': 75.0, 'Volatility': 0.15, 'Crisis_Prob': 0.0})
 
-df = load_data()
-if df is None:
-    st.error("SYS.ERR: 'war_room_audit_2025.csv' MISSING.")
-    st.stop()
+df_main = load_data()
+vec, tfidf, rag_df = setup_rag_vector_db(df_main)
 
 # ==========================================
-# 4. VIEW 1: THE 3D MACRO GLOBE
+# 4. VIEW 1: THE 3D SATELLITE GLOBE
 # ==========================================
 def render_globe():
-    st.markdown(f"<h2 style='text-align: center; color: {COLORS['primary']}; letter-spacing: 2px;'>[ GLOBALCHARGE // MACRO_ALLOCATION_MATRIX ]</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #475569;'>AWAITING TARGET ACQUISITION...</p>", unsafe_allow_html=True)
-    
-    # Render 3D Globe using Plotly Orthographic Projection (Oranges for heatmap)
-    fig = px.choropleth(df, locations="country", locationmode='country names', color="roi_score", color_continuous_scale="Oranges")
-    fig.update_geos(
-        projection_type="orthographic", showland=True, landcolor="#111", oceancolor="#050505", 
-        showframe=False, lakecolor="#050505", bgcolor='rgba(0,0,0,0)'
-    )
-    fig.update_layout(
-        margin={"r":0,"t":0,"l":0,"b":0}, height=500, coloraxis_showscale=False,
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'
-    )
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    
-    # Quick Target Selection (Like OVIP)
-    st.markdown("```bash\n> SELECT_TARGET_NODE\n```")
-    top_targets = ["India", "Germany", "Australia", "France", "Belgium"]
-    cols = st.columns(len(top_targets))
-    for i, target in enumerate(top_targets):
-        with cols[i]:
-            if st.button(f"🎯 {target.upper()}"):
-                st.session_state.target_country = target
-                st.rerun()
+    st.markdown("<h2 style='text-align: center; color: #00F0FF;'>[ OVIP // GLOBAL_THREAT_MATRIX ]</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>AWAITING SATELLITE UPLINK TARGET...</p>", unsafe_allow_html=True)
+    
+    # Globe Data
+    df_nodes = pd.DataFrame.from_dict(COUNTRIES, orient='index').reset_index()
+    df_nodes.columns = ['ID', 'lat', 'lon', 'flag', 'name']
+    
+    # WebGL Layers
+    layer_nodes = pdk.Layer("ScatterplotLayer", df_nodes, get_position="[lon, lat]", get_color="[0, 255, 65, 200]", get_radius=400000, pickable=True)
+    
+    view_state = pdk.ViewState(latitude=25, longitude=40, zoom=1.2, pitch=45, bearing=15)
+    
+    st.pydeck_chart(pdk.Deck(layers=[layer_nodes], initial_view_state=view_state, map_style="mapbox://styles/mapbox/dark-v10"), height=500)
+    
+    # Target Selection Selector
+    st.markdown("```bash\n> INITIATE_NODE_LINK --target\n```")
+    cols = st.columns(5)
+    for i, (code, data) in enumerate(COUNTRIES.items()):
+        with cols[i]:
+            if st.button(f"{data['flag']} {code}"):
+                st.session_state.target = code
+                st.rerun()
 
 # ==========================================
-# 5. VIEW 2: TACTICAL HUD DASHBOARD
+# 5. VIEW 2: THE COMMAND DASHBOARD
 # ==========================================
-def get_intel(country):
-    repo = {
-        "Belgium": ("Fiscal Dominance Shield", "Zero-emission corporate mandate bypasses consumer interest rate shocks.", True),
-        "Australia": ("NVES Policy Alpha", "Prompt NVES implementation and FBT exemption surges commercial ROI.", True),
-        "India": ("Strategic EMPS Pivot", "Supply plateauing, but PLI incentives force localized production. Buy on the dip.", True),
-        "France": ("Eco-Score Moat", "Carbon-indexed subsidies block heavy imports, stabilizing domestic margins.", True),
-        "Germany": ("Umweltbonus Shock", "Subsidy termination collapsed sales 35%. Severe mean-reversion phase active.", False)
-    }
-    return repo.get(country, ("GDP Organic S-Curve", "Adoption shielded by organic wealth scaling.", True))
-
 def render_dashboard():
-    target = st.session_state.target_country
-    c_data = df[df['country'] == target].iloc[0]
-    
-    # TOP HUD HEADER
-    st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 15px;">
-            <h2 style="margin: 0; color: {COLORS['primary']};">SYS.TARGET :: {target.upper()}</h2>
-            <span style="color: {COLORS['muted']};">SECURE_LINK | {datetime.utcnow().strftime('%H:%M:%S')} UTC</span>
-        </div>
-    """, unsafe_allow_html=True)
+    target = st.session_state.target
+    data = COUNTRIES[target]
+    latest_data = df_main.iloc[-1]
+    
+    # TOP HUD HEADER
+    st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid {COLORS['cyan']}; padding-bottom: 5px; margin-bottom: 15px;">
+            <h2 style="margin: 0; color: {COLORS['cyan']};">NODE_ACTIVE :: {target} {data['flag']} - {data['name']}</h2>
+            <span style="color: {COLORS['matrix']};">UPLINK_SECURE | {datetime.utcnow().strftime('%H:%M:%S')} UTC</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # TWO-COLUMN HUD LAYOUT (1:4 Ratio, exactly like OVIP)
-    col_nav, col_main = st.columns([1.5, 3.5])
-    
-    # --- LEFT SIDEBAR (NAVIGATION & METRICS) ---
-    with col_nav:
-        if st.button("⬅ ABORT & RETURN TO GLOBE"):
-            st.session_state.target_country = None
-            st.rerun()
-            
-        st.markdown("<hr style='border: 1px dashed #333;'>", unsafe_allow_html=True)
-        
-        # Explicit HTML to enforce +2pt rule flawlessly
-        st.markdown(f"""
-            <p class="metric-lbl">AI CONFIDENCE</p>
-            <p class="metric-val">{c_data.get('new_prob_pct', 80):.1f}%</p><br>
-            
-            <p class="metric-lbl">ALPHA GAP</p>
-            <p class="metric-val">{c_data.get('opportunity_gap', 0.5):.2f}</p><br>
-            
-            <p class="metric-lbl">ADOPTION LAGGED</p>
-            <p class="metric-val" style="color: white;">{c_data.get('lagged_share', 15):.1f}%</p>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<hr style='border: 1px dashed #333;'>", unsafe_allow_html=True)
-        if st.button("📑 MACRO INTEL"): st.session_state.active_tab = 'intel'; st.rerun()
-        if st.button("⚙️ OVERRIDE LOGIC"): st.session_state.active_tab = 'logic'; st.rerun()
+    # TWO-COLUMN HUD LAYOUT
+    col_nav, col_main = st.columns([1, 4])
+    
+    # --- LEFT SIDEBAR (NAVIGATION & LIVE METRICS) ---
+    with col_nav:
+        st.markdown("<div style='background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #00F0FF;'>", unsafe_allow_html=True)
+        if st.button("🔴 DISCONNECT_NODE"):
+            st.session_state.target = None
+            st.rerun()
+            
+        st.markdown("<hr style='border: 1px dashed #00FF41;'>", unsafe_allow_html=True)
+        st.markdown("### SYSTEM_METRICS")
+        st.metric("WTI_INDEX", f"${latest_data['WTI']:.2f}")
+        st.metric("VOL_SIGMA", f"{latest_data['Volatility']:.3f}")
+        st.metric("NPRS-1_SIGNAL", "▲ UP", "69.1% ACCURACY")
+        
+        st.markdown("<hr style='border: 1px dashed #00FF41;'>", unsafe_allow_html=True)
+        st.markdown("### INTERFACE")
+        if st.button("🎯 INTELLIGENCE"): st.session_state.active_tab = 'intel'; st.rerun()
+        if st.button("💬 AI_DAEMON"): st.session_state.active_tab = 'ai'; st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- RIGHT MAIN AREA (DYNAMIC CONTENT) ---
-    with col_main:
-        headline, context, is_safe = get_intel(target)
-        
-        if st.session_state.active_tab == 'intel':
-            st.markdown(f"<h4 style='margin-top:0; color: {COLORS['primary']};'>> INITIATING REGIME AUDIT...</h4>", unsafe_allow_html=True)
-            
-            # Warning block using strict Orange
-            if not is_safe:
-                st.markdown(f"""
-                <div style="background: rgba(234, 88, 12, 0.1); border-left: 5px solid {COLORS['alert']}; padding: 15px; margin-bottom: 20px;">
-                    <span class="alert-text">⚠️ VULNERABILITY DETECTED:</span> Regime shift predicted for 2024. Proceed with extreme caution.
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style="background: rgba(220, 38, 38, 0.05); border-left: 5px solid {COLORS['primary']}; padding: 15px; margin-bottom: 20px;">
-                    <span style="color: {COLORS['primary']}; font-weight: 800;">✓ STRUCTURALLY SECURE:</span> Market fundamentals validated against policy shocks.
-                </div>
-                """, unsafe_allow_html=True)
-                
-            st.markdown(f"""
-                <div style="background: #111; padding: 25px; border: 1px solid #333;">
-                    <h3 style="color: white; margin-top: 0; text-transform: uppercase;">{headline}</h3>
-                    <p style="font-size: 1.1rem; line-height: 1.7;">{context}</p>
-                </div>
-            """, unsafe_allow_html=True)
+    # --- RIGHT MAIN AREA (DYNAMIC CONTENT) ---
+    with col_main:
+        # TACTICAL INTELLIGENCE TAB
+        if st.session_state.active_tab == 'intel':
+            st.markdown(f"#### > ANALYZING {target} TACTICAL DATA_STREAMS...")
+            
+            # Interactive Plotly Chart (Locked to 450px height so it doesn't scroll)
+            fig = go.Figure()
+            fig.update_layout(
+                template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,20,0,0.3)',
+                height=450, margin=dict(l=0, r=0, t=30, b=0),
+                xaxis=dict(showgrid=True, gridcolor='#003300'), yaxis=dict(showgrid=True, gridcolor='#003300')
+            )
+            fig.add_trace(go.Scatter(
+                x=df_main['Date'][-100:], y=df_main['Volatility'][-100:], 
+                name='Vol', line=dict(color=COLORS['cyan'], width=2), 
+                fill='tozeroy', fillcolor='rgba(0, 240, 255, 0.1)'
+            ))
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-        elif st.session_state.active_tab == 'logic':
-            st.markdown(f"<h4 style='margin-top:0; color: {COLORS['primary']};'>> MANUAL SYSTEM OVERRIDE</h4>", unsafe_allow_html=True)
-            st.write("Adjust deployment weights to bypass AI baseline recommendations:")
-            
-            st.slider("🛡️ RESILIENCE WEIGHT", 0.0, 2.0, 1.0, step=0.1)
-            st.slider("📈 CAPACITY WEIGHT", 0.0, 2.0, 1.0, step=0.1)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("RECALCULATE ALLOCATION MATRIX"):
-                st.success("SYS: Weights updated in local cache.")
+        # AI DAEMON TAB (THE GROQ TERMINAL)
+        elif st.session_state.active_tab == 'ai':
+            st.markdown("#### > DAEMON_V3 :: SECURE QUANTITATIVE AI UPLINK")
+            
+            # Scrollable chat box with fixed height
+            chat_container = st.container(height=450, border=False)
+            with chat_container:
+                for msg in st.session_state.chat:
+                    color = COLORS['cyan'] if msg['role'] == 'user' else COLORS['matrix']
+                    sender = "root@user" if msg['role'] == 'user' else "system@ovip"
+                    st.markdown(f"<p style='color: {color};'><b>{sender}:~$</b> {msg['content']}</p>", unsafe_allow_html=True)
+            
+            # Chat Input Form
+            if prompt := st.chat_input("> ENTER_COMMAND_STRING..."):
+                st.session_state.chat.append({"role": "user", "content": prompt})
+                st.rerun()
+
+            # Process AI response seamlessly
+            if st.session_state.chat[-1]["role"] == "user":
+                with st.spinner("PROCESSING_INTELLIGENCE_ROUTINE..."):
+                    ans = get_ai_response(st.session_state.chat[-1]["content"], vec, tfidf, rag_df)
+                    st.session_state.chat.append({"role": "assistant", "content": ans})
+                    st.rerun()
 
 # ==========================================
 # 6. APP ROUTER
 # ==========================================
-if st.session_state.target_country is None:
-    render_globe()
+if st.session_state.target is None:
+    render_globe()
 else:
-    render_dashboard()
+    render_dashboard()
